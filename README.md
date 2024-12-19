@@ -1,19 +1,20 @@
 # Makerkit - Next.js Supabase SaaS Starter Kit \[Lite version\]
 
-This is the Lite Starter Kit for building SaaS applications using Supabase, Next.js, and Tailwind CSS.
+This is the a SaaS Starter Kit for building SaaS applications using Supabase, Next.js, and Tailwind CSS \[Lite version\].
 
 Looking for the full version of this SaaS Starter Kit? [Check out the complete version of this SaaS Starter Kit](https://makerkit.dev).
 
-## Features
+## Boilerplate Features
 
-This starter kit includes:
+✨ This starter kit includes the following features:
 
 1. A Turborepo monorepo including a Next.js application, and a Playwright test suite.
 2. Shadcn UI components exported from the UI package
 3. Prettier, Eslint, TailwindCSS and Typescript configurations.
 4. A Supabase project with a Postgres database.
-5. The authentication and authorization features of Supabase already configured.
+5. The authentication features of Supabase already configured
 6. Translations using i18next (in both client and server components)
+7. User profile and settings
 
 ### Technologies
 
@@ -48,17 +49,21 @@ The lite kit is perfect for:
 - Evaluating our code architecture and patterns
 - Building basic SaaS prototypes
 - Learning our tech stack approach
+- Building a basic SaaS tool
 
 The [full version](https://makerkit.dev) adds production features:
 - 💳 Complete billing and subscription system
 - 👥 Team accounts and management
-- 👤 User profiles and settings
-- 📧 Email system and templates
-- 📊 Analytics and monitoring
+- 📧 Mailers and Email Templates (Nodemailer, Resend, etc.)
+- 📊 Analytics (GA, Posthog, Umami, etc.)
+- 🔦 Monitoring providers (Sentry, Baselime, etc.)
 - 🔐 Production database schema
 - ✅ Comprehensive test suite
-- 🤝 Support
+- 📝 Blogging system
+- 💡 Documentation system
+- ‍💻 Super Admin panel
 - 🕒 Daily Updates
+- 🤝 Support
 
 [View complete feature comparison →](https://makerkit.dev/#pricing)
 
@@ -66,9 +71,9 @@ The [full version](https://makerkit.dev) adds production features:
 
 ### Prerequisites
 
-- Node.js 18.x or later
+- Node.js 18.x or later (preferably the latest LTS version)
 - Docker
-- Pnpm
+- PNPM
 
 Please make sure you have a Docker daemon running on your machine. This is required for the Supabase CLI to work.
 
@@ -98,6 +103,24 @@ pnpm run supabase:start
 
 Once the Supabase server is running, you can access the Supabase dashboard at http://localhost:54321.
 
+You will also find all the Supabase services printed in the terminal after the command is executed.
+
+##### Stopping Supabase
+
+To stop the Supabase server, run the following command:
+
+```bash
+pnpm run supabase:web:stop
+```
+
+##### Resetting Supabase
+
+To reset the Supabase server, run the following command:
+
+```bash
+pnpm run supabase:web:reset
+```
+
 #### 4. Start the Next.js application
 
 ```bash
@@ -105,6 +128,28 @@ pnpm run dev
 ```
 
 The application will be available at http://localhost:3000.
+
+#### 5. Code Health (linting, formatting, etc.)
+
+To format your code, run the following command:
+
+```bash
+pnpm run format:fix
+```
+
+To lint your code, run the following command:
+
+```bash
+pnpm run lint
+```
+
+To validate your TypeScript code, run the following command:
+
+```bash
+pnpm run typecheck
+```
+
+Turborepo will cache the results of these commands, so you can run them as many times as you want without any performance impact.
 
 ### Environment Variables
 
