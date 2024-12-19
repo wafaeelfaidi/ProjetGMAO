@@ -1,0 +1,39 @@
+{
+  "name": "@kit/eslint-config",
+  "version": "0.2.0",
+  "private": true,
+  "license": "MIT",
+  "files": [
+    "./apps.js"
+  ],
+  "scripts": {
+    "clean": "rm -rf .turbo node_modules",
+    "lint": "eslint .",
+    "format": "prettier --check \"**/*.{js,json}\"",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@next/eslint-plugin-next": "15.1.1",
+    "@types/eslint": "^8.56.10",
+    "@typescript-eslint/eslint-plugin": "^8.18.1",
+    "@typescript-eslint/parser": "^8.18.1",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-config-turbo": "^2.3.3",
+    "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-react": "7.37.2",
+    "eslint-plugin-react-hooks": "^5.1.0"
+  },
+  "devDependencies": {
+    "@kit/prettier-config": "workspace:*",
+    "@kit/tsconfig": "workspace:*",
+    "eslint": "^8.57.0",
+    "typescript": "^5.7.2"
+  },
+  "eslintConfig": {
+    "root": true,
+    "extends": [
+      "./apps.js"
+    ]
+  },
+  "prettier": "@kit/prettier-config"
+}
