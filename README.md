@@ -1,32 +1,30 @@
-# Makerkit - Next.js Supabase SaaS Starter Kit \[Lite version\]
+![Makerkit - Next.js Supabase SaaS Starter Kit \[Lite version\]](apps/web/public/images/makerkit.webp)
 
-This is the a SaaS Starter Kit for building SaaS applications using Supabase, Next.js, and Tailwind CSS \[Lite version\].
+# Next.js Supabase SaaS Starter Kit (Lite)
 
-Looking for the full version of this SaaS Starter Kit? [Check out the complete version of this SaaS Starter Kit](https://makerkit.dev).
+Start building your SaaS faster with our Next.js 15 + Supabase starter kit. This lite version lets you evaluate our architecture and code quality.
 
-## Boilerplate Features
+👉 **Looking for a full-featured SaaS Starter Kit?** [Check out the complete version](https://makerkit.dev)
 
-✨ This starter kit includes the following features:
+## What's Included
 
-1. A Turborepo monorepo including a Next.js application, and a Playwright test suite.
-2. Shadcn UI components exported from the UI package
-3. Prettier, Eslint, TailwindCSS and Typescript configurations.
-4. A Supabase project with a Postgres database.
-5. The authentication features of Supabase already configured
-6. Translations using i18next (in both client and server components)
-7. User profile and settings
+### Core Architecture
+- 🏗️ Next.js 15 + Turborepo monorepo setup
+- 🎨 Shadcn UI components with TailwindCSS
+- 🔐 Supabase authentication & basic DB
+- 🌐 i18n translations (client + server)
+- ✨ Full TypeScript + ESLint + Prettier
+
+### Key Features
+- 👤 User authentication flow
+- ⚙️ User profile & settings
+- 📱 Responsive marketing pages
+- 🔒 Protected routes
+- 🎯 Basic test setup with Playwright
 
 ### Technologies
 
 This starter kit provides core foundations:
-
-✨ **Core Infrastructure**
-- Next.js 15 application in a Turborepo monorepo
-- Supabase authentication and basic database setup
-- Essential Shadcn UI components
-- i18next translations (client + server)
-- TypeScript, TailwindCSS, and ESLint configs
-- Basic test setup with Playwright
 
 🛠️ **Technology Stack**:
 - [Next.js 15](https://nextjs.org/): A React-based framework for server-side rendering and static site generation.
@@ -121,6 +119,21 @@ To reset the Supabase server, run the following command:
 pnpm run supabase:web:reset
 ```
 
+##### More Supabase Commands
+
+For more Supabase commands, see the [Supabase CLI documentation](https://supabase.com/docs/guides/cli).
+
+```
+# Create new migration
+pnpm --filter web supabase migration new <name>
+
+# Link to Supabase project
+pnpm --filter web supabase db link
+
+# Push migrations
+pnpm --filter web supabase db push
+```
+
 #### 4. Start the Next.js application
 
 ```bash
@@ -150,6 +163,29 @@ pnpm run typecheck
 ```
 
 Turborepo will cache the results of these commands, so you can run them as many times as you want without any performance impact.
+
+## Project Structure
+
+The project is organized into the following folders:
+
+```
+apps/
+├── web/                  # Next.js application
+│   ├── app/             # App Router pages
+│   │   ├── (marketing)/ # Public marketing pages
+│   │   ├── auth/        # Authentication pages
+│   │   └── home/        # Protected app pages
+│   ├── supabase/        # Database & migrations
+│   └── config/          # App configuration
+│
+packages/
+├── ui/                  # Shared UI components
+└── features/           # Core feature packages
+    ├── auth/           # Authentication logic
+    └── ...
+```
+
+For more information about this project structure, see the article [Next.js App Router: Project Structure](https://makerkit.dev/blog/tutorials/nextjs-app-router-project-structure).
 
 ### Environment Variables
 
@@ -238,7 +274,23 @@ pnpm --filter web supabase db push
 
 This command will push the migration to the Supabase project. You can now apply the migration to the Supabase database.
 
-#### Supabase Auth URL
+## Going to Production
+
+#### 1. Create a Supabase project
+
+To deploy your application to production, you will need to create a Supabase project.
+
+#### 2. Push the migration to the Supabase project
+
+After you have made changes to the migration, you can push the migration to the Supabase project by running the following command:
+
+```bash
+pnpm --filter web supabase db push
+```
+
+This command will push the migration to the Supabase project.
+
+#### 3. Set the Supabase Callback URL
 
 When working with a remote Supabase project, you will need to set the Supabase Callback URL.
 
@@ -247,6 +299,20 @@ Please set the callback URL in the Supabase project settings to the following UR
 `<url>/auth/callback`
 
 Where `<url>` is the URL of your application.
+
+#### 4. Deploy to Vercel or any other hosting provider
+
+You can deploy your application to any hosting provider that supports Next.js.
+
+#### 5. Deploy to Cloudflare
+
+The configuration should work as is, but you need to set the runtime to `edge` in the root layout file (`apps/web/app/layout.tsx`).
+
+```tsx
+export const runtime = 'edge';
+```
+
+Remember to enable Node.js compatibility in the Cloudflare dashboard.
 
 ## Contributing
 
