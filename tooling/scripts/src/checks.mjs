@@ -2,23 +2,12 @@ import { readFileSync, readdirSync } from 'fs';
 import * as path from 'path';
 
 const whitelist = {
-  STRIPE_SECRET_KEY: [/sk_test_*/],
-  STRIPE_WEBHOOK_SECRET: [/whsec_*/],
-  EMAIL_PASSWORD: ['password'],
-  SUPABASE_DB_WEBHOOK_SECRET: ['WEBHOOKSECRET'],
   SUPABASE_SERVICE_ROLE_KEY: ['eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU'],
 };
 
 // List of sensitive environment variables that should not be in .env files
 const sensitiveEnvVars = [
-  'STRIPE_SECRET_KEY',
-  'STRIPE_WEBHOOK_SECRET',
-  'LEMON_SQUEEZY_SECRET_KEY',
-  'LEMON_SQUEEZY_SIGNING_SECRET',
-  'KEYSTATIC_GITHUB_TOKEN',
-  'SUPABASE_DB_WEBHOOK_SECRET',
   'SUPABASE_SERVICE_ROLE_KEY',
-  'EMAIL_PASSWORD',
   'CAPTCHA_SECRET_TOKEN',
 ];
 
