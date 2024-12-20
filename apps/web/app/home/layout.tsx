@@ -43,7 +43,9 @@ function SidebarLayout({ children }: React.PropsWithChildren) {
           <HomeSidebar user={user} />
         </PageNavigation>
 
-        <MobileNavigation />
+        <PageMobileNavigation className={'flex items-center justify-between'}>
+          <MobileNavigation />
+        </PageMobileNavigation>
 
         {children}
       </Page>
@@ -58,7 +60,9 @@ function HeaderLayout({ children }: React.PropsWithChildren) {
         <HomeMenuNavigation />
       </PageNavigation>
 
-      <MobileNavigation />
+      <PageMobileNavigation className={'flex items-center justify-between'}>
+        <MobileNavigation />
+      </PageMobileNavigation>
 
       {children}
     </Page>
@@ -67,11 +71,11 @@ function HeaderLayout({ children }: React.PropsWithChildren) {
 
 function MobileNavigation() {
   return (
-    <PageMobileNavigation className={'flex items-center justify-between'}>
+    <>
       <AppLogo />
 
       <HomeMobileNavigation />
-    </PageMobileNavigation>
+    </>
   );
 }
 
