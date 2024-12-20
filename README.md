@@ -12,6 +12,8 @@ Start building your SaaS faster with our Next.js 15 + Supabase starter kit. This
 - Modern stack: Next.js 15, Supabase, TailwindCSS
 - Regular updates and active maintenance
 
+PS: the documentation for this kit is still being updated, so please check back later for more details.
+
 ## What's Included
 
 ### Core Architecture
