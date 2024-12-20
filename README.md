@@ -1,8 +1,8 @@
 ![Makerkit - Next.js Supabase SaaS Starter Kit \[Lite version\]](apps/web/public/images/makerkit.webp)
 
-# Next.js Supabase SaaS Starter Kit (Lite)
+# NEW! Next.js Supabase SaaS Starter Kit (Lite)
 
-Start building your SaaS faster with our Next.js 15 + Supabase starter kit. This lite version lets you evaluate our architecture and code quality.
+Start building your SaaS faster with our Next.js 15 + Supabase starter kit.
 
 👉 **Looking for a full-featured SaaS Starter Kit?** [Check out the complete version](https://makerkit.dev)
 
@@ -21,7 +21,7 @@ PS: the documentation for this kit is still being updated, so please check back 
 - 🎨 Shadcn UI components with TailwindCSS
 - 🔐 Supabase authentication & basic DB
 - 🌐 i18n translations (client + server)
-- ✨ Full TypeScript + ESLint + Prettier
+- ✨ Full TypeScript + ESLint + Prettier configuration
 
 ### Key Features
 - 👤 User authentication flow
@@ -77,8 +77,6 @@ The [full version](https://makerkit.dev) adds production features:
 - 🏢 Powers startups to enterprises
 
 [View complete feature comparison →](https://makerkit.dev/#pricing)
-
-- 📈 Regular updates and improvements
 
 ## Getting Started
 
@@ -331,7 +329,7 @@ Remember to enable Node.js compatibility in the Cloudflare dashboard.
 
 ## Contributing
 
-Contributions are welcome! However, please open an issue first to discuss your ideas before making a pull request.
+Contributions for bug fixed are welcome! However, please open an issue first to discuss your ideas before making a pull request.
 
 ## License
 
@@ -339,4 +337,6 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 ## Support
 
-This lite version has community support through GitHub issues. For dedicated support, priority fixes, and advanced features, check out our full version.
+No support is provided for this kit. Feel free to open an issue if you have any questions or need help, but there is no guaranteed response time, nor guarantee a fix.
+
+For dedicated support, priority fixes, and advanced features, [check out our full version](https://makerkit.dev).
