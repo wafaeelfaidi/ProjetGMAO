@@ -6,6 +6,12 @@ Start building your SaaS faster with our Next.js 15 + Supabase starter kit. This
 
 👉 **Looking for a full-featured SaaS Starter Kit?** [Check out the complete version](https://makerkit.dev)
 
+⭐️ **Why Developers Trust Makerkit:**
+- Production-grade architecture decisions
+- Comprehensive TypeScript setup
+- Modern stack: Next.js 15, Supabase, TailwindCSS
+- Regular updates and active maintenance
+
 ## What's Included
 
 ### Core Architecture
@@ -57,13 +63,20 @@ The [full version](https://makerkit.dev) adds production features:
 - 🔦 Monitoring providers (Sentry, Baselime, etc.)
 - 🔐 Production database schema
 - ✅ Comprehensive test suite
+- 🔔 Realtime Notifications
 - 📝 Blogging system
 - 💡 Documentation system
 - ‍💻 Super Admin panel
-- 🕒 Daily Updates
+- 🕒 Daily updates and improvements
+- 🐛 Priority bug fixes
 - 🤝 Support
+- ⭐️ Used by 1000+ developers
+- 💪 Active community members
+- 🏢 Powers startups to enterprises
 
 [View complete feature comparison →](https://makerkit.dev/#pricing)
+
+- 📈 Regular updates and improvements
 
 ## Getting Started
 
