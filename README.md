@@ -109,10 +109,10 @@ Please make sure you have a Docker daemon running on your machine.
 Then run the following command to start Supabase:
 
 ```bash
-pnpm run supabase:start
+pnpm run supabase:web:start
 ```
 
-Once the Supabase server is running, you can access the Supabase dashboard at http://localhost:54321.
+Once the Supabase server is running, please access the Supabase Dashboard using the port in the output of the previous command. Normally, you find it at [http://localhost:54323](http://localhost:54323).
 
 You will also find all the Supabase services printed in the terminal after the command is executed.
 
