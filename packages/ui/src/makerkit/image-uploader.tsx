@@ -2,8 +2,6 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
-import Image from 'next/image';
-
 import { Image as ImageIcon } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 
@@ -71,8 +69,14 @@ export function ImageUploader(
 
   return (
     <div className={'flex items-center space-x-4'}>
-      <label className={'relative h-20 w-20 animate-in fade-in zoom-in-50'}>
-        <Image fill className={'h-20 w-20 rounded-full'} src={image} alt={''} />
+      <label className={'animate-in fade-in zoom-in-50 relative h-20 w-20'}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          decoding="async"
+          className={'h-20 w-20 rounded-full object-cover'}
+          src={image}
+          alt={''}
+        />
 
         <Input />
       </label>
@@ -95,10 +99,10 @@ function FallbackImage(
     <div className={'flex items-center space-x-4'}>
       <label
         className={
-          'relative flex h-20 w-20 cursor-pointer flex-col items-center justify-center rounded-full border border-border animate-in fade-in zoom-in-50 hover:border-primary'
+          'border-border animate-in fade-in zoom-in-50 hover:border-primary relative flex h-20 w-20 cursor-pointer flex-col items-center justify-center rounded-full border'
         }
       >
-        <ImageIcon className={'h-8 text-primary'} />
+        <ImageIcon className={'text-primary h-8'} />
 
         {props.children}
       </label>

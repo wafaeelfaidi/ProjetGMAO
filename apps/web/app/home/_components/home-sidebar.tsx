@@ -18,11 +18,11 @@ export function HomeSidebar(props: {
   user: User;
 }) {
   return (
-    <Sidebar>
+    <Sidebar collapsible={'icon'}>
       <SidebarHeader className={'h-16 justify-center'}>
         <div className={'flex items-center justify-between space-x-2'}>
-          <div className={'group-data-[minimized=true]:hidden'}>
-            <AppLogo />
+          <div>
+            <AppLogo className={'max-w-full'} />
           </div>
         </div>
       </SidebarHeader>

@@ -68,7 +68,7 @@ const FormItemContext = React.createContext<FormItemContextValue>(
   {} as FormItemContextValue,
 );
 
-const FormItem: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({
+const FormItem: React.FC<React.ComponentPropsWithRef<'div'>> = ({
   className,
   ...props
 }) => {
@@ -76,7 +76,7 @@ const FormItem: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({
 
   return (
     <FormItemContext.Provider value={{ id }}>
-      <div className={cn('space-y-2', className)} {...props} />
+      <div className={cn('flex flex-col gap-y-2', className)} {...props} />
     </FormItemContext.Provider>
   );
 };
@@ -118,7 +118,7 @@ const FormControl: React.FC<React.ComponentPropsWithoutRef<typeof Slot>> = ({
 };
 FormControl.displayName = 'FormControl';
 
-const FormDescription: React.FC<React.HTMLAttributes<HTMLParagraphElement>> = ({
+const FormDescription: React.FC<React.ComponentPropsWithRef<'p'>> = ({
   className,
   ...props
 }) => {
@@ -127,14 +127,14 @@ const FormDescription: React.FC<React.HTMLAttributes<HTMLParagraphElement>> = ({
   return (
     <p
       id={formDescriptionId}
-      className={cn('text-[0.8rem] text-muted-foreground', className)}
+      className={cn('text-muted-foreground text-[0.8rem]', className)}
       {...props}
     />
   );
 };
 FormDescription.displayName = 'FormDescription';
 
-const FormMessage: React.FC<React.HTMLAttributes<HTMLParagraphElement>> = ({
+const FormMessage: React.FC<React.ComponentPropsWithRef<'p'>> = ({
   className,
   children,
   ...props
@@ -149,7 +149,7 @@ const FormMessage: React.FC<React.HTMLAttributes<HTMLParagraphElement>> = ({
   return (
     <p
       id={formMessageId}
-      className={cn('text-[0.8rem] font-medium text-destructive', className)}
+      className={cn('text-destructive text-[0.8rem] font-medium', className)}
       {...props}
     >
       {typeof body === 'string' ? (

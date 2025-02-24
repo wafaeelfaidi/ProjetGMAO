@@ -23,7 +23,7 @@ const AvatarImage: React.FC<
   React.ComponentPropsWithRef<typeof AvatarPrimitive.Image>
 > = ({ className, ...props }) => (
   <AvatarPrimitive.Image
-    className={cn('aspect-square h-full w-full', className)}
+    className={cn('aspect-square h-full w-full object-cover', className)}
     {...props}
   />
 );
@@ -34,7 +34,7 @@ const AvatarFallback: React.FC<
 > = ({ className, ...props }) => (
   <AvatarPrimitive.Fallback
     className={cn(
-      'flex h-full w-full items-center justify-center rounded-full bg-muted',
+      'bg-muted flex h-full w-full items-center justify-center rounded-full',
       className,
     )}
     {...props}
