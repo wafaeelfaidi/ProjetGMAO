@@ -43,7 +43,7 @@ function Home() {
             <Image
               priority
               className={
-                'rounded-2xl border border-gray-200 dark:border-primary/10'
+                'dark:border-primary/10 rounded-2xl border border-gray-200'
               }
               width={3558}
               height={2222}
@@ -65,7 +65,7 @@ function Home() {
                   The ultimate SaaS Starter Kit
                 </b>
                 .{' '}
-                <span className="font-normal text-muted-foreground">
+                <span className="text-muted-foreground font-normal">
                   Unleash your creativity and build your SaaS faster than ever
                   with Makerkit.
                 </span>
@@ -94,9 +94,7 @@ function Home() {
               />
 
               <FeatureCard
-                className={
-                  'relative col-span-2 overflow-hidden lg:col-span-1'
-                }
+                className={'relative col-span-2 overflow-hidden lg:col-span-1'}
                 label={'Multi Tenancy'}
                 description={`Multi tenant memberships for your SaaS business.`}
               />
@@ -128,8 +126,8 @@ function MainCallToActionButton() {
 
             <ArrowRightIcon
               className={
-                'h-4 animate-in fade-in slide-in-from-left-8' +
-                ' delay-1000 duration-1000 zoom-in fill-mode-both'
+                'animate-in fade-in slide-in-from-left-8 h-4' +
+                ' zoom-in fill-mode-both delay-1000 duration-1000'
               }
             />
           </span>
