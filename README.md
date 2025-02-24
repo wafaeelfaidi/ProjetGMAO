@@ -9,7 +9,8 @@ Start building your SaaS faster with our Next.js 15 + Supabase starter kit.
 ⭐️ **Why Developers Trust Makerkit:**
 - Production-grade architecture decisions
 - Comprehensive TypeScript setup
-- Modern stack: Next.js 15, Supabase, TailwindCSS
+- Modern stack: Next.js 15, Supabase, TailwindCSS v4
+- Quality Code tooling: ESLint v9, Prettier, strict TypeScript, etc.
 - Regular updates and active maintenance
 
 PS: the documentation for this kit is still being updated, so please check back later for more details.
@@ -18,10 +19,10 @@ PS: the documentation for this kit is still being updated, so please check back 
 
 ### Core Architecture
 - 🏗️ Next.js 15 + Turborepo monorepo setup
-- 🎨 Shadcn UI components with TailwindCSS
+- 🎨 Shadcn UI components with TailwindCSS v4
 - 🔐 Supabase authentication & basic DB
 - 🌐 i18n translations (client + server)
-- ✨ Full TypeScript + ESLint + Prettier configuration
+- ✨ Full TypeScript + ESLint v9 + Prettier configuration
 
 ### Key Features
 - 👤 User authentication flow
