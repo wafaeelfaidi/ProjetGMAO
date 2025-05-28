@@ -196,7 +196,7 @@ function onError({
 
   console.error(
     {
-      error,
+      error: JSON.stringify(error),
       name: `auth.callback`,
     },
     `An error occurred while signing user in`,
