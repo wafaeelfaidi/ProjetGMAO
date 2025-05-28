@@ -142,7 +142,7 @@ For more Supabase commands, see the [Supabase CLI documentation](https://supabas
 pnpm --filter web supabase migration new <name>
 
 # Link to Supabase project
-pnpm --filter web supabase db link
+pnpm --filter web supabase link
 
 # Push migrations
 pnpm --filter web supabase db push
