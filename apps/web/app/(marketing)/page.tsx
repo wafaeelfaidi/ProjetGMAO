@@ -80,18 +80,10 @@ function Home() {
           >
             <FeatureGrid>
               <FeatureCard
-                className={'relative col-span-2 overflow-hidden lg:h-96'}
+                className={'relative col-span-2 overflow-hidden'}
                 label={'Beautiful Dashboard'}
                 description={`Makerkit provides a beautiful dashboard to manage your SaaS business.`}
-              >
-                <Image
-                  className="border-border absolute top-0 right-0 hidden h-full w-full rounded-tl-2xl border lg:top-36 lg:flex lg:h-auto lg:w-10/12"
-                  src={'/images/dashboard-header.webp'}
-                  width={'2061'}
-                  height={'800'}
-                  alt={'Dashboard Header'}
-                />
-              </FeatureCard>
+              />
 
               <FeatureCard
                 className={
@@ -99,45 +91,19 @@ function Home() {
                 }
                 label={'Authentication'}
                 description={`Makerkit provides a variety of providers to allow your users to sign in.`}
-              >
-                <Image
-                  className="absolute top-32 left-16 hidden h-auto w-8/12 rounded-l-2xl lg:flex"
-                  src={'/images/sign-in.webp'}
-                  width={'1760'}
-                  height={'1680'}
-                  alt={'Sign In'}
-                />
-              </FeatureCard>
+              />
 
               <FeatureCard
-                className={
-                  'relative col-span-2 overflow-hidden lg:col-span-1 lg:h-96'
-                }
+                className={'relative col-span-2 overflow-hidden lg:col-span-1'}
                 label={'Multi Tenancy'}
                 description={`Multi tenant memberships for your SaaS business.`}
-              >
-                <Image
-                  className="absolute top-0 right-0 hidden h-full w-full rounded-tl-2xl border lg:top-28 lg:flex lg:h-auto lg:w-8/12"
-                  src={'/images/multi-tenancy.webp'}
-                  width={'2061'}
-                  height={'800'}
-                  alt={'Multi Tenancy'}
-                />
-              </FeatureCard>
+              />
 
               <FeatureCard
-                className={'relative col-span-2 overflow-hidden lg:h-96'}
+                className={'relative col-span-2 overflow-hidden'}
                 label={'Billing'}
                 description={`Makerkit supports multiple payment gateways to charge your customers.`}
-              >
-                <Image
-                  className="border-border absolute top-0 right-0 hidden h-full w-full rounded-tl-2xl border lg:top-36 lg:flex lg:h-auto lg:w-11/12"
-                  src={'/images/billing.webp'}
-                  width={'2061'}
-                  height={'800'}
-                  alt={'Billing'}
-                />
-              </FeatureCard>
+              />
             </FeatureGrid>
           </FeatureShowcase>
         </div>

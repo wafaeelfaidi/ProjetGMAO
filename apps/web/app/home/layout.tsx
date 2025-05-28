@@ -37,7 +37,7 @@ function SidebarLayout({ children }: React.PropsWithChildren) {
   const [user] = use(Promise.all([requireUserInServerComponent()]));
 
   return (
-    <SidebarProvider minimized={sidebarMinimized}>
+    <SidebarProvider defaultOpen={sidebarMinimized}>
       <Page style={'sidebar'}>
         <PageNavigation>
           <HomeSidebar user={user} />

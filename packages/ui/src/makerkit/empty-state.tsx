@@ -60,7 +60,7 @@ const EmptyState: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({
   return (
     <div
       className={cn(
-        'flex flex-1 items-center justify-center rounded-lg border border-dashed shadow-sm',
+        'flex flex-1 items-center justify-center rounded-lg border border-dashed shadow-xs',
         className,
       )}
       {...props}

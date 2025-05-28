@@ -39,12 +39,11 @@ const CommandDialog = ({ children, ...props }: CommandDialogProps) => {
 const CommandInput: React.FC<
   React.ComponentPropsWithRef<typeof CommandPrimitive.Input>
 > = ({ className, ...props }) => (
-  // eslint-disable-next-line react/no-unknown-property
   <div className="flex items-center border-b px-3" cmdk-input-wrapper="">
     <MagnifyingGlassIcon className="mr-2 h-4 w-4 shrink-0 opacity-50" />
     <CommandPrimitive.Input
       className={cn(
-        'placeholder:text-muted-foreground flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none disabled:cursor-not-allowed disabled:opacity-50',
+        'placeholder:text-muted-foreground flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-hidden disabled:cursor-not-allowed disabled:opacity-50',
         className,
       )}
       {...props}
@@ -102,7 +101,7 @@ const CommandItem: React.FC<
 > = ({ className, ...props }) => (
   <CommandPrimitive.Item
     className={cn(
-      "aria-[selected='true']:bg-accent aria-[selected='true']:text-accent-foreground relative flex cursor-default items-center rounded-sm px-2 py-1.5 text-sm outline-none select-none data-[disabled='true']:pointer-events-none data-[disabled='true']:opacity-50",
+      "aria-selected:bg-accent aria-selected:text-accent-foreground relative flex cursor-default items-center rounded-xs px-2 py-1.5 text-sm outline-hidden select-none data-[disabled='true']:pointer-events-none data-[disabled='true']:opacity-50",
       className,
     )}
     {...props}

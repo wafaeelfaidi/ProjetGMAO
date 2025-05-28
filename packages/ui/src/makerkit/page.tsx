@@ -1,6 +1,8 @@
 import * as React from 'react';
 
 import { cn } from '../lib/utils';
+import { Separator } from '../shadcn/separator';
+import { SidebarTrigger } from '../shadcn/sidebar';
 import { If } from './if';
 
 export type PageLayoutStyle = 'sidebar' | 'header' | 'custom';
@@ -11,6 +13,10 @@ type PageProps = React.PropsWithChildren<{
   className?: string;
   sticky?: boolean;
 }>;
+
+const ENABLE_SIDEBAR_TRIGGER = process.env.NEXT_PUBLIC_ENABLE_SIDEBAR_TRIGGER
+  ? process.env.NEXT_PUBLIC_ENABLE_SIDEBAR_TRIGGER === 'true'
+  : true;
 
 export function Page(props: PageProps) {
   switch (props.style) {
@@ -29,7 +35,7 @@ function PageWithSidebar(props: PageProps) {
   const { Navigation, Children, MobileNavigation } = getSlotsFromPage(props);
 
   return (
-    <div className={cn('flex flex-1', props.className)}>
+    <div className={cn('flex min-w-0 flex-1', props.className)}>
       {Navigation}
 
       <div
@@ -81,7 +87,7 @@ function PageWithHeader(props: PageProps) {
       >
         <div
           className={cn(
-            'bg-muted/40 dark:border-border dark:shadow-primary/10 flex h-14 items-center justify-between px-4 lg:justify-start lg:shadow-sm',
+            'bg-muted/40 dark:border-border dark:shadow-primary/10 flex h-14 items-center justify-between px-4 lg:justify-start lg:shadow-xs',
             {
               'sticky top-0 z-10 backdrop-blur-md': props.sticky ?? true,
             },
@@ -118,7 +124,7 @@ export function PageNavigation(props: React.PropsWithChildren) {
 
 export function PageDescription(props: React.PropsWithChildren) {
   return (
-    <div className={'h-6'}>
+    <div className={'flex h-6 items-center'}>
       <div className={'text-muted-foreground text-xs leading-none font-normal'}>
         {props.children}
       </div>
@@ -130,7 +136,7 @@ export function PageTitle(props: React.PropsWithChildren) {
   return (
     <h1
       className={
-        'font-heading h-6 leading-none font-bold tracking-tight dark:text-white'
+        'font-heading text-base leading-none font-bold tracking-tight dark:text-white'
       }
     >
       {props.children}
@@ -147,22 +153,37 @@ export function PageHeader({
   title,
   description,
   className,
+  displaySidebarTrigger = ENABLE_SIDEBAR_TRIGGER,
 }: React.PropsWithChildren<{
   className?: string;
   title?: string | React.ReactNode;
   description?: string | React.ReactNode;
+  displaySidebarTrigger?: boolean;
 }>) {
   return (
     <div
       className={cn(
-        'flex items-center justify-between py-4 lg:px-4',
+        'flex items-center justify-between py-5 lg:px-4',
         className,
       )}
     >
-      <div className={'flex flex-col'}>
-        <If condition={description}>
-          <PageDescription>{description}</PageDescription>
-        </If>
+      <div className={'flex flex-col gap-y-2'}>
+        <div className="flex items-center gap-x-2.5">
+          {displaySidebarTrigger ? (
+            <SidebarTrigger className="text-muted-foreground hover:text-secondary-foreground hidden h-4.5 w-4.5 cursor-pointer lg:inline-flex" />
+          ) : null}
+
+          <If condition={description}>
+            <If condition={displaySidebarTrigger}>
+              <Separator
+                orientation="vertical"
+                className="hidden h-4 w-px lg:group-data-[minimized]:block"
+              />
+            </If>
+
+            <PageDescription>{description}</PageDescription>
+          </If>
+        </div>
 
         <If condition={title}>
           <PageTitle>{title}</PageTitle>

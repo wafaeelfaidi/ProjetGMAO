@@ -189,7 +189,7 @@ export function SidebarGroup({
   return (
     <div
       className={cn('flex flex-col', {
-        'space-y-1 py-1': !collapsed,
+        'gap-y-2 py-1': !collapsed,
       })}
     >
       <Wrapper />
@@ -267,7 +267,7 @@ export function SidebarItem({
 function getClassNameBuilder(className: string) {
   return cva([
     cn(
-      'group/sidebar transition-width fixed box-content flex h-screen w-2/12 flex-col bg-inherit backdrop-blur-sm duration-200',
+      'group/sidebar transition-width fixed box-content flex h-screen w-2/12 flex-col bg-inherit backdrop-blur-xs duration-200',
       className,
     ),
   ]);

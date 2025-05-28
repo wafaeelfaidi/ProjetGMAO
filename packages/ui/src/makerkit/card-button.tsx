@@ -17,7 +17,7 @@ export const CardButton: React.FC<
   return (
     <Comp
       className={cn(
-        'group hover:bg-secondary/20 active:bg-secondary active:bg-secondary/50 dark:shadow-primary/20 relative flex h-36 flex-col rounded-lg border transition-all hover:shadow active:shadow-lg',
+        'group hover:bg-secondary/20 active:bg-secondary active:bg-secondary/50 dark:shadow-primary/20 relative flex h-36 flex-col rounded-lg border transition-all hover:shadow-xs active:shadow-lg',
         className,
       )}
       {...props}

@@ -39,7 +39,7 @@ export function BorderedNavigationMenuItem(props: {
       <Button
         asChild
         variant={'ghost'}
-        className={cn('relative active:shadow-sm', props.buttonClassName)}
+        className={cn('relative active:shadow-xs', props.buttonClassName)}
       >
         <Link
           href={props.path}

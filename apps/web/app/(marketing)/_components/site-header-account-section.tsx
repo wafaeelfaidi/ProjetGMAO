@@ -5,8 +5,6 @@ import Link from 'next/link';
 
 import type { User } from '@supabase/supabase-js';
 
-import { ArrowRightIcon } from 'lucide-react';
-
 import { PersonalAccountDropdown } from '@kit/accounts/personal-account-dropdown';
 import { useSignOut } from '@kit/supabase/hooks/use-sign-out';
 import { useUser } from '@kit/supabase/hooks/use-user';
@@ -81,12 +79,6 @@ function AuthButtons() {
       <Button asChild className="group" variant={'default'}>
         <Link href={pathsConfig.auth.signUp}>
           <Trans i18nKey={'auth:signUp'} />
-
-          <ArrowRightIcon
-            className={
-              'ml-1 hidden h-4 w-4 transition-transform duration-500 group-hover:translate-x-1 lg:block'
-            }
-          />
         </Link>
       </Button>
     </div>

@@ -25,7 +25,7 @@ const RadioGroupItem: React.FC<
   return (
     <RadioGroupPrimitive.Item
       className={cn(
-        'border-primary text-primary focus-visible:ring-ring aspect-square h-4 w-4 rounded-full border shadow focus:outline-none focus-visible:ring-1 disabled:cursor-not-allowed disabled:opacity-50',
+        'border-primary text-primary focus-visible:ring-ring aspect-square h-4 w-4 rounded-full border shadow-xs focus:outline-hidden focus-visible:ring-1 disabled:cursor-not-allowed disabled:opacity-50',
         className,
       )}
       {...props}
@@ -52,8 +52,8 @@ const RadioGroupItemLabel = (
           ' border-input items-center space-x-4 border' +
           ' transition-duration-500 focus-within:border-primary p-4 text-sm transition-all',
         {
-          [`border-primary`]: props.selected,
-          [`hover:border-primary`]: !props.selected,
+          [`bg-muted`]: props.selected,
+          [`hover:bg-muted`]: !props.selected,
         },
       )}
     >

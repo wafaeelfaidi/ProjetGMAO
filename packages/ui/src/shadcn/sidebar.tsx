@@ -36,9 +36,9 @@ const SIDEBAR_COOKIE_NAME = 'sidebar:state';
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
 const SIDEBAR_WIDTH = '16rem';
 const SIDEBAR_WIDTH_MOBILE = '18rem';
-const SIDEBAR_WIDTH_ICON = '3rem';
+const SIDEBAR_WIDTH_ICON = '4rem';
 const SIDEBAR_KEYBOARD_SHORTCUT = 'b';
-const SIDEBAR_MINIMIZED_WIDTH = '4rem';
+const SIDEBAR_MINIMIZED_WIDTH = SIDEBAR_WIDTH_ICON;
 
 type SidebarContext = {
   state: 'expanded' | 'collapsed';
@@ -46,12 +46,8 @@ type SidebarContext = {
   setOpen: (open: boolean) => void;
   openMobile: boolean;
   setOpenMobile: (open: boolean) => void;
-  setMinimized: (minimized: boolean) => void;
   isMobile: boolean;
   toggleSidebar: () => void;
-  minimized: boolean;
-  startMinimized: boolean;
-  expandOnHover: boolean;
 };
 
 export const SidebarContext = React.createContext<SidebarContext | null>(null);
@@ -71,13 +67,10 @@ const SidebarProvider: React.FC<
     defaultOpen?: boolean;
     open?: boolean;
     onOpenChange?: (open: boolean) => void;
-    minimized?: boolean;
-    expandOnHover?: boolean;
   }
 > = ({
   ref,
   defaultOpen = true,
-  minimized: isMinimized = false,
   open: openProp,
   onOpenChange: setOpenProp,
   className,
@@ -87,11 +80,7 @@ const SidebarProvider: React.FC<
 }) => {
   const isMobile = useIsMobile();
   const [openMobile, setOpenMobile] = React.useState(false);
-  const [minimized, setMinimized] = React.useState(isMinimized);
-
-  const expandOnHover =
-    props.expandOnHover ??
-    process.env.NEXT_PUBLIC_EXPAND_SIDEBAR_ON_HOVER === 'true';
+  const collapsibleStyle = process.env.NEXT_PUBLIC_SIDEBAR_COLLAPSIBLE_STYLE;
 
   // This is the internal state of the sidebar.
   // We use openProp and setOpenProp for control from outside the component.
@@ -136,7 +125,6 @@ const SidebarProvider: React.FC<
   // We add a state so that we can do data-state="expanded" or "collapsed".
   // This makes it easier to style the sidebar with Tailwind classes.
   const state = open ? 'expanded' : 'collapsed';
-  const startMinimized = isMinimized;
 
   const contextValue = React.useMemo<SidebarContext>(
     () => ({
@@ -144,28 +132,20 @@ const SidebarProvider: React.FC<
       open,
       setOpen,
       isMobile,
-      minimized,
-      setMinimized,
-      expandOnHover,
       openMobile,
       setOpenMobile,
       toggleSidebar,
-      startMinimized,
     }),
-    [
-      state,
-      open,
-      setOpen,
-      isMobile,
-      openMobile,
-      setOpenMobile,
-      toggleSidebar,
-      expandOnHover,
-      minimized,
-      setMinimized,
-      startMinimized,
-    ],
+    [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar],
   );
+
+  const sidebarWidth = !open
+    ? collapsibleStyle === 'icon'
+      ? SIDEBAR_WIDTH_ICON
+      : collapsibleStyle === 'offcanvas'
+        ? 0
+        : SIDEBAR_MINIMIZED_WIDTH
+    : SIDEBAR_WIDTH;
 
   return (
     <SidebarContext.Provider value={contextValue}>
@@ -173,16 +153,14 @@ const SidebarProvider: React.FC<
         <div
           style={
             {
-              '--sidebar-width': minimized
-                ? SIDEBAR_MINIMIZED_WIDTH
-                : SIDEBAR_WIDTH,
+              '--sidebar-width': sidebarWidth,
               '--sidebar-width-icon': SIDEBAR_WIDTH_ICON,
               ...style,
             } as React.CSSProperties
           }
-          data-minimized={minimized}
+          data-minimized={!open}
           className={cn(
-            'group text-sidebar-foreground has-[[data-variant=inset]]:bg-sidebar flex min-h-svh w-full',
+            'group text-sidebar-foreground has-data-[variant=inset]:bg-sidebar flex min-h-svh w-full',
             className,
           )}
           ref={ref}
@@ -212,51 +190,16 @@ const Sidebar: React.FC<
   ref,
   ...props
 }) => {
-  const {
-    isMobile,
-    state,
-    openMobile,
-    setOpenMobile,
-    minimized,
-    setMinimized,
-    expandOnHover,
-    startMinimized,
-  } = useSidebar();
-  useSidebar();
-
-  const isExpandedRef = React.useRef<boolean>(false);
-
-  const onMouseEnter =
-    startMinimized && expandOnHover
-      ? () => {
-          setMinimized(false);
-          isExpandedRef.current = true;
-        }
-      : undefined;
-
-  const onMouseLeave =
-    startMinimized && expandOnHover
-      ? () => {
-          if (!isRadixPopupOpen()) {
-            setMinimized(true);
-            isExpandedRef.current = false;
-          } else {
-            onRadixPopupClose(() => {
-              setMinimized(true);
-              isExpandedRef.current = false;
-            });
-          }
-        }
-      : undefined;
+  const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
 
   if (collapsible === 'none') {
     return (
       <div
         className={cn(
-          'bg-sidebar text-sidebar-foreground flex h-full w-[--sidebar-width] flex-col',
+          'bg-sidebar text-sidebar-foreground flex h-full w-(--sidebar-width) flex-col',
           className,
           {
-            [SIDEBAR_MINIMIZED_WIDTH]: minimized,
+            [SIDEBAR_MINIMIZED_WIDTH]: !open,
           },
         )}
         ref={ref}
@@ -274,7 +217,7 @@ const Sidebar: React.FC<
           data-sidebar="sidebar"
           data-mobile="true"
           className={cn(
-            'text-sidebar-foreground w-[--sidebar-width] p-0 [&>button]:hidden',
+            'text-sidebar-foreground w-(--sidebar-width) p-0 [&>button]:hidden',
             {
               'bg-background': variant === 'ghost',
               'bg-sidebar': variant !== 'ghost',
@@ -301,18 +244,16 @@ const Sidebar: React.FC<
       data-collapsible={state === 'collapsed' ? collapsible : ''}
       data-variant={variant}
       data-side={side}
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
     >
       {/* This is what handles the sidebar gap on desktop */}
       <div
         className={cn(
-          'relative w-[--sidebar-width] bg-transparent transition-[width] duration-200 ease-linear',
+          'relative w-(--sidebar-width) bg-transparent transition-[width] duration-200 ease-linear',
           'group-data-[collapsible=offcanvas]:w-0',
           'group-data-[side=right]:rotate-180',
           variant === 'floating' || variant === 'inset'
-            ? 'group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]'
-            : 'group-data-[collapsible=icon]:w-[--sidebar-width-icon]',
+            ? 'group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4)))]'
+            : 'group-data-[collapsible=icon]:w-(--sidebar-width-icon)',
           {
             'h-svh': variant !== 'ghost',
           },
@@ -320,14 +261,14 @@ const Sidebar: React.FC<
       />
       <div
         className={cn(
-          'fixed inset-y-0 z-10 hidden h-svh w-[--sidebar-width] transition-[left,right,width] duration-200 ease-linear md:flex',
+          'fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear md:flex',
           side === 'left'
             ? 'left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]'
             : 'right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]',
           // Adjust the padding for floating and inset variants.
           variant === 'floating' || variant === 'inset'
-            ? 'p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4)_+2px)]'
-            : 'group-data-[collapsible=icon]:w-[--sidebar-width-icon] group-data-[side=left]:border-r group-data-[side=right]:border-l',
+            ? 'p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4))+2px)]'
+            : 'group-data-[collapsible=icon]:w-(--sidebar-width-icon) group-data-[side=left]:border-r group-data-[side=right]:border-l',
           className,
         )}
         {...props}
@@ -335,9 +276,9 @@ const Sidebar: React.FC<
         <div
           data-sidebar="sidebar"
           className={cn(
-            'bg-sidebar group-data-[variant=floating]:border-sidebar-border flex h-full w-full flex-col group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:shadow',
+            'bg-sidebar group-data-[variant=floating]:border-sidebar-border flex h-full w-full flex-col group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:shadow-sm',
             {
-              'bg-background': variant === 'ghost',
+              'bg-transparent': variant === 'ghost',
             },
           )}
         >
@@ -355,7 +296,13 @@ const SidebarTrigger: React.FC<React.ComponentProps<typeof Button>> = ({
   onClick,
   ...props
 }) => {
-  const { toggleSidebar } = useSidebar();
+  const context = React.useContext(SidebarContext);
+
+  if (!context) {
+    return null;
+  }
+
+  const { toggleSidebar } = context;
 
   return (
     <Button
@@ -391,9 +338,9 @@ const SidebarRail: React.FC<React.ComponentProps<'button'>> = ({
       title="Toggle Sidebar"
       className={cn(
         'hover:after:bg-sidebar-border absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 transition-all ease-linear group-data-[side=left]:-right-4 group-data-[side=right]:left-0 after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] sm:flex',
-        '[[data-side=left]_&]:cursor-w-resize [[data-side=right]_&]:cursor-e-resize',
+        'in-data-[side=left]:cursor-w-resize in-data-[side=right]:cursor-e-resize',
         '[[data-side=left][data-state=collapsed]_&]:cursor-e-resize [[data-side=right][data-state=collapsed]_&]:cursor-w-resize',
-        'group-data-[collapsible=offcanvas]:hover:bg-sidebar group-data-[collapsible=offcanvas]:translate-x-0 group-data-[collapsible=offcanvas]:after:left-full',
+        'hover:group-data-[collapsible=offcanvas]:bg-sidebar group-data-[collapsible=offcanvas]:translate-x-0 group-data-[collapsible=offcanvas]:after:left-full',
         '[[data-side=left][data-collapsible=offcanvas]_&]:-right-2',
         '[[data-side=right][data-collapsible=offcanvas]_&]:-left-2',
         className,
@@ -412,7 +359,7 @@ const SidebarInset: React.FC<React.ComponentProps<'main'>> = ({
     <main
       className={cn(
         'bg-background relative flex min-h-svh flex-1 flex-col',
-        'peer-data-[variant=inset]:min-h-[calc(100svh-theme(spacing.4))] md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow md:peer-data-[state=collapsed]:peer-data-[variant=inset]:ml-2',
+        'peer-data-[variant=inset]:min-h-[calc(100svh-(--spacing(4)))] md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow-sm md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-2',
         className,
       )}
       {...props}
@@ -520,7 +467,7 @@ const SidebarGroupLabel: React.FC<
     <Comp
       data-sidebar="group-label"
       className={cn(
-        'text-muted-foreground ring-sidebar-ring flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium transition-[margin,opa] duration-200 ease-linear outline-none focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0',
+        'text-muted-foreground ring-sidebar-ring flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium outline-hidden transition-[margin,opa] duration-200 ease-linear focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0',
         'group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0',
         className,
       )}
@@ -539,9 +486,9 @@ const SidebarGroupAction: React.FC<
     <Comp
       data-sidebar="group-action"
       className={cn(
-        'text-sidebar-foreground ring-sidebar-ring hover:bg-sidebar-accent hover:text-sidebar-accent-foreground absolute top-3.5 right-3 flex aspect-square w-5 items-center justify-center rounded-md p-0 transition-transform outline-none focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0',
+        'text-sidebar-foreground ring-sidebar-ring hover:bg-sidebar-accent hover:text-sidebar-accent-foreground absolute top-3.5 right-3 flex aspect-square w-5 items-center justify-center rounded-md p-0 outline-hidden transition-transform focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0',
         // Increases the hit area of the button on mobile.
-        'after:absolute after:-inset-2 after:md:hidden',
+        'after:absolute after:-inset-2 md:after:hidden',
         'group-data-[collapsible=icon]:hidden',
         className,
       )}
@@ -569,7 +516,10 @@ const SidebarMenu: React.FC<React.ComponentProps<'ul'>> = ({
 }) => (
   <ul
     data-sidebar="menu"
-    className={cn('flex w-full min-w-0 flex-col gap-1', className)}
+    className={cn(
+      'flex w-full min-w-0 flex-col gap-1 group-data-[minimized=true]:items-center',
+      className,
+    )}
     {...props}
   />
 );
@@ -581,14 +531,17 @@ const SidebarMenuItem: React.FC<React.ComponentProps<'li'>> = ({
 }) => (
   <li
     data-sidebar="menu-item"
-    className={cn('group/menu-item relative', className)}
+    className={cn(
+      'group/menu-item relative group-data-[collapsible=icon]:justify-center',
+      className,
+    )}
     {...props}
   />
 );
 SidebarMenuItem.displayName = 'SidebarMenuItem';
 
 const sidebarMenuButtonVariants = cva(
-  'peer/menu-button ring-sidebar-ring hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus:ring-primary active:bg-sidebar-accent active:text-sidebar-accent-foreground data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm transition-[width,height,padding] outline-none group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-2 focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:font-medium [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0',
+  'peer/menu-button ring-sidebar-ring hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus:ring-primary active:bg-sidebar-accent active:text-sidebar-accent-foreground data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-hidden transition-[width,height,padding] group-has-data-[sidebar=menu-action]/menu-item:pr-8 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:font-medium [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0',
   {
     variants: {
       variant: {
@@ -599,7 +552,7 @@ const sidebarMenuButtonVariants = cva(
       size: {
         default: 'h-8 text-sm',
         sm: 'h-7 text-xs',
-        lg: 'h-12 text-sm group-data-[collapsible=icon]:!p-0',
+        lg: 'h-12 text-sm group-data-[collapsible=icon]:p-0!',
       },
     },
     defaultVariants: {
@@ -625,7 +578,7 @@ const SidebarMenuButton: React.FC<
   ...props
 }) => {
   const Comp = asChild ? Slot : 'button';
-  const { isMobile, minimized } = useSidebar();
+  const { isMobile, open } = useSidebar();
   const { t } = useTranslation();
 
   const button = (
@@ -656,7 +609,7 @@ const SidebarMenuButton: React.FC<
       <TooltipContent
         side="right"
         align="center"
-        hidden={isMobile || !minimized}
+        hidden={isMobile || open}
         {...tooltip}
       />
     </Tooltip>
@@ -677,9 +630,9 @@ const SidebarMenuAction: React.FC<
     <Comp
       data-sidebar="menu-action"
       className={cn(
-        'text-sidebar-foreground ring-sidebar-ring hover:bg-sidebar-accent hover:text-sidebar-accent-foreground peer-hover/menu-button:text-sidebar-accent-foreground absolute top-1.5 right-1 flex aspect-square w-5 items-center justify-center rounded-md p-0 transition-transform outline-none focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0',
+        'text-sidebar-foreground ring-sidebar-ring hover:bg-sidebar-accent hover:text-sidebar-accent-foreground peer-hover/menu-button:text-sidebar-accent-foreground absolute top-1.5 right-1 flex aspect-square w-5 items-center justify-center rounded-md p-0 outline-hidden transition-transform focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0',
         // Increases the hit area of the button on mobile.
-        'after:absolute after:-inset-2 after:md:hidden',
+        'after:absolute after:-inset-2 md:after:hidden',
         'peer-data-[size=sm]/menu-button:top-1',
         'peer-data-[size=default]/menu-button:top-1.5',
         'peer-data-[size=lg]/menu-button:top-2.5',
@@ -737,7 +690,7 @@ const SidebarMenuSkeleton: React.FC<
         />
       )}
       <Skeleton
-        className="h-4 max-w-[--skeleton-width] flex-1"
+        className="h-4 max-w-(--skeleton-width) flex-1"
         data-sidebar="menu-skeleton-text"
         style={
           {
@@ -787,7 +740,7 @@ const SidebarMenuSubButton: React.FC<
       data-size={size}
       data-active={isActive}
       className={cn(
-        'text-sidebar-foreground ring-sidebar-ring hover:bg-sidebar-accent hover:text-sidebar-accent-foreground active:bg-sidebar-accent active:text-sidebar-accent-foreground [&>svg]:text-sidebar-accent-foreground flex h-7 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2 outline-none focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0',
+        'text-sidebar-foreground ring-sidebar-ring hover:bg-sidebar-accent hover:text-sidebar-accent-foreground active:bg-sidebar-accent active:text-sidebar-accent-foreground [&>svg]:text-sidebar-accent-foreground flex h-7 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2 outline-hidden focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0',
         'data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground',
         size === 'sm' && 'text-xs',
         size === 'md' && 'text-sm',
@@ -806,7 +759,7 @@ export function SidebarNavigation({
   config: SidebarConfig;
 }>) {
   const currentPath = usePathname() ?? '';
-  const { minimized } = useSidebar();
+  const { open } = useSidebar();
 
   return (
     <>
@@ -847,15 +800,12 @@ export function SidebarNavigation({
                 <If
                   condition={item.collapsible}
                   fallback={
-                    <SidebarGroupLabel className={cn({ hidden: minimized })}>
+                    <SidebarGroupLabel className={cn({ hidden: !open })}>
                       <Trans i18nKey={item.label} defaults={item.label} />
                     </SidebarGroupLabel>
                   }
                 >
-                  <SidebarGroupLabel
-                    className={cn({ hidden: minimized })}
-                    asChild
-                  >
+                  <SidebarGroupLabel className={cn({ hidden: !open })} asChild>
                     <CollapsibleTrigger>
                       <Trans i18nKey={item.label} defaults={item.label} />
                       <ChevronDown className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-180" />
@@ -873,14 +823,6 @@ export function SidebarNavigation({
                   <SidebarMenu>
                     <ContentContainer>
                       {item.children.map((child, childIndex) => {
-                        if (child.renderAction) {
-                          return (
-                            <SidebarMenuSubItem key={child.path}>
-                              {child.renderAction}
-                            </SidebarMenuSubItem>
-                          );
-                        }
-
                         const Container = (props: React.PropsWithChildren) => {
                           if ('collapsible' in child && child.collapsible) {
                             return (
@@ -918,15 +860,15 @@ export function SidebarNavigation({
                                   <div
                                     className={cn('flex items-center gap-2', {
                                       'mx-auto w-full gap-0 [&>svg]:flex-1 [&>svg]:shrink-0':
-                                        minimized,
+                                        !open,
                                     })}
                                   >
                                     {child.Icon}
                                     <span
                                       className={cn(
-                                        'w-auto transition-opacity duration-300',
+                                        'transition-width w-auto transition-opacity duration-500',
                                         {
-                                          'w-0 opacity-0': minimized,
+                                          'w-0 opacity-0': !open,
                                         },
                                       )}
                                     >
@@ -935,11 +877,12 @@ export function SidebarNavigation({
                                         defaults={child.label}
                                       />
                                     </span>
+
                                     <ChevronDown
                                       className={cn(
                                         'ml-auto size-4 transition-transform group-data-[state=open]/collapsible:rotate-180',
                                         {
-                                          'hidden size-0': minimized,
+                                          'hidden size-0': !open,
                                         },
                                       )}
                                     />
@@ -966,8 +909,7 @@ export function SidebarNavigation({
                             >
                               <Link
                                 className={cn('flex items-center', {
-                                  'mx-auto w-full !gap-0 [&>svg]:flex-1':
-                                    minimized,
+                                  'mx-auto w-full gap-0! [&>svg]:flex-1': !open,
                                 })}
                                 href={path}
                               >
@@ -976,7 +918,7 @@ export function SidebarNavigation({
                                   className={cn(
                                     'w-auto transition-opacity duration-300',
                                     {
-                                      'w-0 opacity-0': minimized,
+                                      'w-0 opacity-0': !open,
                                     },
                                   )}
                                 >
@@ -1000,24 +942,29 @@ export function SidebarNavigation({
                                   {(children) => (
                                     <SidebarMenuSub
                                       className={cn({
-                                        'mx-0 px-1.5': minimized,
+                                        'mx-0 px-1.5': !open,
                                       })}
                                     >
                                       {children.map((child) => {
-                                        if (child.renderAction) {
-                                          return (
-                                            <SidebarMenuSubItem
-                                              key={child.path}
-                                            >
-                                              {child.renderAction}
-                                            </SidebarMenuSubItem>
-                                          );
-                                        }
-
                                         const isActive = isRouteActive(
                                           child.path,
                                           currentPath,
                                           child.end,
+                                        );
+
+                                        const linkClassName = cn(
+                                          'flex items-center',
+                                          {
+                                            'mx-auto w-full gap-0! [&>svg]:flex-1':
+                                              !open,
+                                          },
+                                        );
+
+                                        const spanClassName = cn(
+                                          'w-auto transition-opacity duration-300',
+                                          {
+                                            'w-0 opacity-0': !open,
+                                          },
                                         );
 
                                         return (
@@ -1027,25 +974,12 @@ export function SidebarNavigation({
                                               asChild
                                             >
                                               <Link
-                                                className={cn(
-                                                  'flex items-center',
-                                                  {
-                                                    'mx-auto w-full !gap-0 [&>svg]:flex-1':
-                                                      minimized,
-                                                  },
-                                                )}
+                                                className={linkClassName}
                                                 href={child.path}
                                               >
                                                 {child.Icon}
-                                                <span
-                                                  className={cn(
-                                                    'w-auto transition-opacity duration-300',
-                                                    {
-                                                      'w-0 opacity-0':
-                                                        minimized,
-                                                    },
-                                                  )}
-                                                >
+
+                                                <span className={spanClassName}>
                                                   <Trans
                                                     i18nKey={child.label}
                                                     defaults={child.label}
@@ -1060,6 +994,10 @@ export function SidebarNavigation({
                                   )}
                                 </If>
                               </ContentContainer>
+
+                              <SidebarMenuAction>
+                                {child.renderAction}
+                              </SidebarMenuAction>
                             </SidebarMenuItem>
                           </Container>
                         );
@@ -1069,7 +1007,7 @@ export function SidebarNavigation({
                 </SidebarGroupContent>
               </SidebarGroup>
 
-              <If condition={minimized && !isLast}>
+              <If condition={!open && !isLast}>
                 <SidebarSeparator />
               </If>
             </Container>
@@ -1106,30 +1044,3 @@ export {
   SidebarTrigger,
   useSidebar,
 };
-
-function getRadixPopup() {
-  return document.querySelector('[data-radix-popper-content-wrapper]');
-}
-
-function isRadixPopupOpen() {
-  return getRadixPopup() !== null;
-}
-
-function onRadixPopupClose(callback: () => void) {
-  const element = getRadixPopup();
-
-  if (element) {
-    const observer = new MutationObserver(() => {
-      if (!getRadixPopup()) {
-        callback();
-
-        observer.disconnect();
-      }
-    });
-
-    observer.observe(element.parentElement!, {
-      childList: true,
-      subtree: true,
-    });
-  }
-}

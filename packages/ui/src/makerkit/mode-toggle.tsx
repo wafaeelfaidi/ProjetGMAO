@@ -99,7 +99,7 @@ export function SubMenuModeToggle() {
       <DropdownMenuSub>
         <DropdownMenuSubTrigger
           className={
-            'hidden w-full items-center justify-between space-x-2 lg:flex'
+            'hidden w-full items-center justify-between gap-x-3 lg:flex'
           }
         >
           <span className={'flex space-x-2'}>

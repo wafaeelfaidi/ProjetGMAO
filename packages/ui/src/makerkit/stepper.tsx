@@ -75,7 +75,7 @@ export function Stepper(props: {
   const containerClassName = cn('w-full', {
     ['flex justify-between']: variant === 'numbers',
     ['flex space-x-0.5']: variant === 'default',
-    ['flex space-x-2.5 self-center']: variant === 'dots',
+    ['flex gap-x-4 self-center']: variant === 'dots',
   });
 
   return (
