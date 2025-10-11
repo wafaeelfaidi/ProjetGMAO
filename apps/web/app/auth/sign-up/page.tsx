@@ -36,7 +36,7 @@ function SignUpPage() {
         paths={paths}
       />
 
-      <div className={'justify-center flex'}>
+      <div className={'flex justify-center'}>
         <Button asChild variant={'link'} size={'sm'}>
           <Link href={pathsConfig.auth.signIn}>
             <Trans i18nKey={'auth:alreadyHaveAnAccount'} />
