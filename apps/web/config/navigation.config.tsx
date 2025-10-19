@@ -1,4 +1,4 @@
-import { Home, User, LayoutDashboard, Bot, Wrench, FileWarning } from 'lucide-react';
+import { Home, User, LayoutDashboard, Bot, Wrench, FileWarning,Upload  } from 'lucide-react';
 
 
 import { z } from 'zod';
@@ -19,16 +19,24 @@ const routes = [
         Icon: <Home className={iconClasses} />,
         end: true,
       },
+
+      {
+        label: 'common:routes.dataUpload',
+        path: pathsConfig.app.dataupload,
+        Icon: <Upload  className={iconClasses} />,
+      },
+
+
       {
         label: 'common:routes.dashboard',
         path: pathsConfig.app.dashboard,
         Icon: <LayoutDashboard className={iconClasses} />,
       },
-      {
-        label: 'common:routes.chatbot',
-        path: pathsConfig.app.chatbot,
-        Icon: <Bot className={iconClasses} />,
-      },
+
+
+
+      
+      
       {
         label: 'common:routes.RPN',
         path: pathsConfig.app.RPN,
@@ -38,6 +46,13 @@ const routes = [
         label: 'common:routes.PDR',
         path: pathsConfig.app.PDR,
         Icon: <FileWarning className={iconClasses} />,
+      },
+
+
+      {
+        label: 'common:routes.chatbot',
+        path: pathsConfig.app.chatbot,
+        Icon: <Bot className={iconClasses} />,
       },
     ],
   },
