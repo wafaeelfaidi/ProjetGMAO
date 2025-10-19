@@ -16,6 +16,7 @@ const PathsSchema = z.object({
     RPN: z.string().min(1),
     PDR: z.string().min(1),
     profileSettings: z.string().min(1),
+    dataupload: z.string().min(1),
   }),
 });
 
@@ -34,6 +35,7 @@ const pathsConfig = PathsSchema.parse({
     chatbot: '/chatbot',
     RPN: '/rpn',
     PDR: '/pdr',
+    dataupload: '/dataUpload',
     profileSettings: '/app/settings/profile',
   },
 

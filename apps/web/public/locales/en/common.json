@@ -92,6 +92,7 @@
 
 
   "routes": {
+    "dataUpload": "Data Upload",
     "home": "Home",
     "account": "Account",
     "members": "Members",
