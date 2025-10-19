@@ -31,11 +31,11 @@ const pathsConfig = PathsSchema.parse({
   },
    app: {
     home: '/home',
-    dashboard: '/dashboard',
-    chatbot: '/chatbot',
-    RPN: '/rpn',
-    PDR: '/pdr',
-    dataupload: '/dataUpload',
+    dashboard: '/home/dashboard',
+    chatbot: '/home/chatbot',
+    RPN: '/home/rpn',
+    PDR: '/home/pdr',
+    dataupload: '/home/dataUpload',
     profileSettings: '/home/settings',
   },
 
