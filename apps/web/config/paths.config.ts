@@ -36,7 +36,7 @@ const pathsConfig = PathsSchema.parse({
     RPN: '/rpn',
     PDR: '/pdr',
     dataupload: '/dataUpload',
-    profileSettings: '/profile',
+    profileSettings: '/home/settings',
   },
 
 } satisfies z.infer<typeof PathsSchema>);
