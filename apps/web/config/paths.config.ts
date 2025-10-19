@@ -11,6 +11,10 @@ const PathsSchema = z.object({
   }),
   app: z.object({
     home: z.string().min(1),
+    dashboard: z.string().min(1),
+    chatbot: z.string().min(1),
+    RPN: z.string().min(1),
+    PDR: z.string().min(1),
     profileSettings: z.string().min(1),
   }),
 });
@@ -24,10 +28,15 @@ const pathsConfig = PathsSchema.parse({
     passwordReset: '/auth/password-reset',
     passwordUpdate: '/update-password',
   },
-  app: {
-    home: '/home',
-    profileSettings: '/home/settings',
+   app: {
+    home: '/app',
+    dashboard: '/dashboard',
+    chatbot: '/chatbot',
+    RPN: '/rpn',
+    PDR: '/pdr',
+    profileSettings: '/app/settings/profile',
   },
+
 } satisfies z.infer<typeof PathsSchema>);
 
 export default pathsConfig;

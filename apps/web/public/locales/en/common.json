@@ -6,7 +6,15 @@
   "billingTabLabel": "Billing",
   "billingTabDescription": "Manage your billing and subscription",
   "dashboardTabLabel": "Dashboard",
-  "settingsTabLabel": "Settings",
+  "home": "Home",
+  "dashboard": "Dashboard",
+  "chatbot": "Chatbot",
+  "RPN": "RPN",
+  "PDR": "PDR",
+  "profile": "Profile",
+  "application": "Application",
+  "settings": "Settings",
+  "settingsTabLabel" : "Settings",
   "profileSettingsTabLabel": "Profile",
   "subscriptionSettingsTabLabel": "Subscription",
   "dashboardTabDescription": "An overview of your account's activity and performance across all your projects.",
@@ -78,5 +86,22 @@
     "description": "This website uses cookies to ensure you get the best experience on our website.",
     "reject": "Reject",
     "accept": "Accept"
-  }
-}
+  },
+
+
+
+
+  "routes": {
+    "home": "Home",
+    "account": "Account",
+    "members": "Members",
+    "billing": "Billing",
+    "dashboard": "Dashboard",
+    "chatbot": "Chatbot",
+    "RPN": "RPN",
+    "PDR": "PDR",
+    "settings": "Settings",
+    "profile": "Profile",
+    "application": "Application"
+}}
+

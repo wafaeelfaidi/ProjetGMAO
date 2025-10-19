@@ -1,4 +1,6 @@
-import { Home, User } from 'lucide-react';
+import { Home, User, LayoutDashboard, Bot, Wrench, FileWarning } from 'lucide-react';
+
+
 import { z } from 'zod';
 
 import { NavigationConfigSchema } from '@kit/ui/navigation-schema';
@@ -17,6 +19,26 @@ const routes = [
         Icon: <Home className={iconClasses} />,
         end: true,
       },
+      {
+        label: 'common:routes.dashboard',
+        path: pathsConfig.app.dashboard,
+        Icon: <LayoutDashboard className={iconClasses} />,
+      },
+      {
+        label: 'common:routes.chatbot',
+        path: pathsConfig.app.chatbot,
+        Icon: <Bot className={iconClasses} />,
+      },
+      {
+        label: 'common:routes.RPN',
+        path: pathsConfig.app.RPN,
+        Icon: <Wrench className={iconClasses} />,
+      },
+      {
+        label: 'common:routes.PDR',
+        path: pathsConfig.app.PDR,
+        Icon: <FileWarning className={iconClasses} />,
+      },
     ],
   },
   {
@@ -30,6 +52,7 @@ const routes = [
     ],
   },
 ] satisfies z.infer<typeof NavigationConfigSchema>['routes'];
+
 
 export const navigationConfig = NavigationConfigSchema.parse({
   routes,
