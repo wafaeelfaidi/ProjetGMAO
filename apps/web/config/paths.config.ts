@@ -30,13 +30,13 @@ const pathsConfig = PathsSchema.parse({
     passwordUpdate: '/update-password',
   },
    app: {
-    home: '/app',
+    home: '/home',
     dashboard: '/dashboard',
     chatbot: '/chatbot',
     RPN: '/rpn',
     PDR: '/pdr',
     dataupload: '/dataUpload',
-    profileSettings: '/app/settings/profile',
+    profileSettings: '/home/settings',
   },
 
 } satisfies z.infer<typeof PathsSchema>);
