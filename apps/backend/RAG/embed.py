@@ -1,24 +1,21 @@
-from openai import OpenAI
-import tiktoken
-
-client = OpenAI()
+import cohere
+import os
+from dotenv import load_dotenv
+load_dotenv()
+COHERE_API_KEY = os.getenv("COHERE_API_KEY")
+co = cohere.Client(COHERE_API_KEY)
 
 def chunk_text(text, max_tokens=500):
-    tokenizer = tiktoken.get_encoding("cl100k_base")
-    tokens = tokenizer.encode(text)
-    for i in range(0, len(tokens), max_tokens):
-        yield tokenizer.decode(tokens[i:i+max_tokens])
+    for i in range(0, len(text), max_tokens):
+        yield text[i:i+max_tokens]
 
 def create_embeddings(text):
     chunks = list(chunk_text(text))
+    response = co.embed(texts=chunks)
     embeddings = []
-    for chunk in chunks:
-        response = client.embeddings.create(
-            input=chunk,
-            model="text-embedding-3-small"
-        )
+    for chunk, embedding in zip(chunks, response.embeddings):
         embeddings.append({
             "text": chunk,
-            "embedding": response.data[0].embedding
+            "embedding": embedding
         })
     return embeddings

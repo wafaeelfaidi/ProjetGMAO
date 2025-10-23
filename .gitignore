@@ -47,3 +47,5 @@ yarn-error.log*
 .contentlayer/
 
 apps/backend/env
+
+apps/backend/env2

@@ -1,6 +1,8 @@
-from openai import OpenAI
+import cohere
+import os
 
-client = OpenAI()
+COHERE_API_KEY = os.getenv("COHERE_API_KEY")
+co = cohere.Client(COHERE_API_KEY)
 
 def generate_answer(context, query):
     prompt = f"""
@@ -13,10 +15,10 @@ def generate_answer(context, query):
     Question:
     {query}
     """
-
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}],
+    response = co.chat(
+        model="command-a-03-2025",
+        message=prompt,
+        max_tokens=256,
+        temperature=0.3
     )
-
-    return response.choices[0].message.content
+    return response.text.strip()

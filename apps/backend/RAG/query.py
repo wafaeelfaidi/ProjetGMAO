@@ -1,23 +1,26 @@
 from supabase import create_client
-import numpy as np
-from openai import OpenAI
 import os
+import google.generativeai as genai
+import cohere
 
-url = os.environ["NEXT_PUBLIC_SUPABASE_URL"]
-key = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+url = os.environ["SUPABASE_URL"]
+key = os.environ["SUPABASE_SERVICE_KEY"]
 supabase = create_client(url, key)
-client = OpenAI()
+genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+COHERE_API_KEY = os.getenv("COHERE_API_KEY")
+co = cohere.Client(COHERE_API_KEY)
 
 def query_context(user_id, query):
-    query_embedding = client.embeddings.create(
-        model="text-embedding-3-small",
-        input=query
-    ).data[0].embedding
-
-    # Use Supabase pgvector similarity search
+    # Gemini does not provide direct embeddings. Use Vertex AI or other service if needed.
+    # For now, just use the query text for matching.
+    embedding = get_query_embedding(query)
     response = supabase.rpc(
-        "match_documents",  # custom RPC defined below
-        {"query_embedding": query_embedding, "match_count": 5, "user_id": user_id}
+        "match_documents",
+        {"query_embedding": embedding, "match_count": 5, "user_id": user_id}
     ).execute()
 
     return " ".join([doc["text"] for doc in response.data])
+
+def get_query_embedding(query):
+    response = co.embed(texts=[query])
+    return response.embeddings[0]
