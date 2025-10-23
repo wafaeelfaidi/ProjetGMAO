@@ -1,12 +1,10 @@
 from supabase import create_client
 import os
-import google.generativeai as genai
 import cohere
 
 url = os.environ["SUPABASE_URL"]
 key = os.environ["SUPABASE_SERVICE_KEY"]
 supabase = create_client(url, key)
-genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
 COHERE_API_KEY = os.getenv("COHERE_API_KEY")
 co = cohere.Client(COHERE_API_KEY)
 
