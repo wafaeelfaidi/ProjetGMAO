@@ -20,5 +20,5 @@ def query_context(user_id, query):
     return " ".join([doc["text"] for doc in response.data])
 
 def get_query_embedding(query):
-    response = co.embed(texts=[query])
+    response = co.embed(texts=[query], model="embed-english-v3.0", input_type="search_query")
     return response.embeddings[0]

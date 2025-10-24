@@ -8,7 +8,9 @@ export function useSupabaseSession() {
 
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      console.log("Initial session:", session);
+      console.log("Initial session error:", error);
       setSession(session);
       setLoading(false);
     });
@@ -16,7 +18,9 @@ export function useSupabaseSession() {
     // Listen for session changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log("Auth state change event:", event);
+      console.log("Auth state change session:", session);
       setSession(session);
       setLoading(false);
     });

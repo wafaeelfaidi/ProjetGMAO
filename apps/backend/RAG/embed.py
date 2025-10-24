@@ -11,7 +11,7 @@ def chunk_text(text, max_tokens=500):
 
 def create_embeddings(text):
     chunks = list(chunk_text(text))
-    response = co.embed(texts=chunks)
+    response = co.embed(texts=chunks, model="embed-english-v3.0", input_type="search_document")
     embeddings = []
     for chunk, embedding in zip(chunks, response.embeddings):
         embeddings.append({
