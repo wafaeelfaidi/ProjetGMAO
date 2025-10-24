@@ -13,42 +13,7 @@ export async function POST(req: NextRequest) {
 
     // Get the user's session token
     const authHeader = req.headers.get("authorization");
-    // Prefer Authorization header (DataUpload page sets this explicitly)
-    let access_token = authHeader?.startsWith("Bearer ")
-      ? authHeader.replace("Bearer ", "")
-      : authHeader || null;
-
-    // Fallbacks: check common Supabase cookie names if header not present
-    if (!access_token) {
-      const possibleCookieNames = [
-        "sb-access-token",
-        "sb:token",
-        "supabase-auth-token",
-        "sb-access-token-local",
-      ];
-
-      for (const name of possibleCookieNames) {
-        const cookie = req.cookies.get?.(name);
-        if (cookie?.value) {
-          access_token = cookie.value;
-          break;
-        }
-      }
-
-      // Last resort: parse raw Cookie header for an access token key
-      if (!access_token) {
-        const cookieHeader = req.headers.get("cookie") || "";
-        const tokenMatch = cookieHeader.match(/(?:sb-access-token|supabase-auth-token)=([^;\n\r]+)/);
-        if (tokenMatch && tokenMatch[1]) {
-          access_token = decodeURIComponent(tokenMatch[1]);
-        }
-      }
-    }
-
-    if (!access_token) {
-      console.warn("Upload attempted without access token");
-      return NextResponse.json({ error: "Unauthorized - no token" }, { status: 401 });
-    }
+    const access_token = authHeader?.replace("Bearer ", "");
 
     const {
       data: { user },
@@ -56,7 +21,6 @@ export async function POST(req: NextRequest) {
     } = await supabase.auth.getUser(access_token);
 
     if (userError || !user) {
-      console.warn("Supabase auth.getUser failed", { error: userError });
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -110,29 +74,6 @@ export async function POST(req: NextRequest) {
     if (insertError) {
       console.error("Insert error:", insertError);
       return NextResponse.json({ error: insertError.message }, { status: 500 });
-    }
-
-    // Call backend to process the document
-    try {
-      const backendUrl = process.env.BACKEND_URL || "http://localhost:8000";
-      const processResponse = await fetch(`${backendUrl}/process_document`, {
-        method: "POST",
-        body: new URLSearchParams({
-          file_url: publicUrl,
-          user_id: user.id,
-        }),
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-      });
-
-      if (!processResponse.ok) {
-        console.error("Process document failed:", await processResponse.text());
-        // Don't fail the upload if processing fails, just log it
-      }
-    } catch (processError) {
-      console.error("Error calling process_document:", processError);
-      // Don't fail the upload
     }
 
     return NextResponse.json({

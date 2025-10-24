@@ -1,8 +1,7 @@
 "use client";
-import { useState, useEffect } from "react";
-import { supabase } from "~/lib/supabase/client";
+import { useState } from "react";
+import { useSupabaseSession } from "~/lib/supabase/use-session";
 import { Send, MessageCircle, User, Bot } from "lucide-react";
-import ReactMarkdown from "react-markdown";
 
 interface Message {
   id: string;
@@ -15,116 +14,19 @@ export default function ChatPage() {
   const [query, setQuery] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [user, setUser] = useState<any>(null);
-  const [authLoading, setAuthLoading] = useState(true);
-  const [authError, setAuthError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let mounted = true;
-
-    const checkAuth = async () => {
-      try {
-        console.log("Checking authentication...");
-        const { data: { user }, error } = await supabase.auth.getUser();
-
-        if (!mounted) return;
-
-        console.log("Auth check result:", { user: !!user, error: error?.message });
-
-        if (error) {
-          console.error("Auth error:", error);
-          setAuthError(error.message);
-        } else {
-          setUser(user);
-          setAuthError(null);
-        }
-      } catch (err) {
-        console.error("Auth check failed:", err);
-        setAuthError("Failed to check authentication");
-      } finally {
-        if (mounted) {
-          setAuthLoading(false);
-        }
-      }
-    };
-
-    checkAuth();
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log("Auth state change:", event, !!session?.user);
-
-        if (!mounted) return;
-
-        if (event === 'SIGNED_IN' && session?.user) {
-          setUser(session.user);
-          setAuthError(null);
-        } else if (event === 'SIGNED_OUT') {
-          setUser(null);
-          setAuthError(null);
-        } else if (event === 'TOKEN_REFRESHED' && session?.user) {
-          console.log("Token refreshed, updating user");
-          setUser(session.user);
-        }
-      }
-    );
-
-    // Set up periodic session refresh
-    const refreshInterval = setInterval(async () => {
-      if (!mounted) return;
-
-      try {
-        const { data: { session }, error } = await supabase.auth.refreshSession();
-        if (error) {
-          console.log("Session refresh failed:", error.message);
-        } else if (session?.user) {
-          console.log("Session refreshed successfully");
-          setUser(session.user);
-        }
-      } catch (err) {
-        console.log("Session refresh error:", err);
-      }
-    }, 5 * 60 * 1000); // Refresh every 5 minutes
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-      clearInterval(refreshInterval);
-    };
-  }, []);
+  const { session, loading } = useSupabaseSession();
 
   const sendQuery = async () => {
-    // Double-check user authentication before sending
-    if (!user?.id) {
-      console.log("No user found, checking auth again...");
-      try {
-        const { data: { user: currentUser }, error } = await supabase.auth.getUser();
-        if (!currentUser || error) {
-          console.log("Still no user, redirecting to sign-in");
-          setMessages(prev => [...prev, {
-            id: Date.now().toString(),
-            role: 'assistant',
-            content: "Please log in to use the chatbot. Redirecting...",
-            timestamp: new Date()
-          }]);
-          window.location.href = "/auth/sign-in?next=/home/chatbot";
-          return;
-        }
-        setUser(currentUser);
-      } catch (err) {
-        console.error("Failed to re-check auth:", err);
-        setMessages(prev => [...prev, {
-          id: Date.now().toString(),
-          role: 'assistant',
-          content: "Authentication check failed. Please refresh the page.",
-          timestamp: new Date()
-        }]);
-        return;
-      }
+    if (!session?.user?.id) {
+      setMessages(prev => [...prev, {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: "Please log in to use the chatbot. Redirecting to sign-in...",
+        timestamp: new Date()
+      }]);
+      window.location.href = "/auth/sign-in?next=/home/chatbot";
+      return;
     }
-
-    console.log("Sending query with user ID:", user.id);
 
     if (!query.trim()) return;
 
@@ -141,26 +43,11 @@ export default function ChatPage() {
     setQuery("");
 
     try {
-      // Ensure we have a fresh session before making the API call (matching dataUpload pattern)
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError || !session?.access_token) {
-        throw new Error("Session expired or invalid. Please sign in again.");
-      }
-
       const res = await fetch("http://localhost:8000/chat", {
         method: "POST",
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({ user_id: user.id, query: currentQuery }),
+        body: new URLSearchParams({ user_id: session.user.id, query: currentQuery }),
       });
-
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-      }
-
       const data = await res.json();
-      console.log("Chat response:", data);
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -171,11 +58,10 @@ export default function ChatPage() {
 
       setMessages(prev => [...prev, assistantMessage]);
     } catch (error) {
-      console.error("Chat request failed:", error);
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: `Failed to connect to the server: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`,
+        content: "Failed to connect to the server. Please try again.",
         timestamp: new Date()
       };
       setMessages(prev => [...prev, errorMessage]);
@@ -191,32 +77,13 @@ export default function ChatPage() {
     }
   };
 
-  if (authLoading) return (
+  if (loading) return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6">
       <div className="max-w-4xl mx-auto">
         <div className="bg-white rounded-2xl shadow-lg p-8">
           <div className="flex items-center justify-center">
             <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
             <span className="ml-3 text-slate-600">Loading...</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  if (authError) return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6">
-      <div className="max-w-4xl mx-auto">
-        <div className="bg-white rounded-2xl shadow-lg p-8">
-          <div className="text-center">
-            <div className="text-red-600 mb-4">Authentication Error</div>
-            <p className="text-slate-600 mb-4">{authError}</p>
-            <button
-              onClick={() => window.location.href = "/auth/sign-in?next=/home/chatbot"}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              Sign In
-            </button>
           </div>
         </div>
       </div>
@@ -270,13 +137,7 @@ export default function ChatPage() {
                         {message.timestamp.toLocaleTimeString()}
                       </span>
                     </div>
-                    {message.role === 'assistant' ? (
-                      <div className="text-sm prose prose-sm max-w-none">
-                        <ReactMarkdown>{message.content}</ReactMarkdown>
-                      </div>
-                    ) : (
-                      <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                    )}
+                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                   </div>
                 </div>
               ))
@@ -322,33 +183,9 @@ export default function ChatPage() {
 
         {/* Info Footer */}
         <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
-          <div className="flex justify-between items-center">
-            <p className="text-sm text-blue-800">
-              <strong>💡 Conseil :</strong> Pour de meilleurs résultats, soyez spécifique dans vos questions sur vos documents techniques.
-            </p>
-            {user && (
-              <button
-                onClick={async () => {
-                  try {
-                    const { data: { session }, error } = await supabase.auth.refreshSession();
-                    if (error) {
-                      console.error("Manual session refresh failed:", error);
-                      window.location.href = "/auth/sign-in?next=/home/chatbot";
-                    } else {
-                      setUser(session?.user || null);
-                      console.log("Session manually refreshed");
-                    }
-                  } catch (err) {
-                    console.error("Manual refresh error:", err);
-                    window.location.href = "/auth/sign-in?next=/home/chatbot";
-                  }
-                }}
-                className="text-xs px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-md transition-colors"
-              >
-                Refresh Session
-              </button>
-            )}
-          </div>
+          <p className="text-sm text-blue-800">
+            <strong>💡 Conseil :</strong> Pour de meilleurs résultats, soyez spécifique dans vos questions sur vos documents techniques.
+          </p>
         </div>
       </div>
     </div>
