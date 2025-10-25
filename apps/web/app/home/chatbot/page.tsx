@@ -2,6 +2,8 @@
 import { useState } from "react";
 import { useSupabaseSession } from "~/lib/supabase/use-session";
 import { Send, MessageCircle, User, Bot } from "lucide-react";
+import { useEffect } from 'react';
+
 
 interface Message {
   id: string;
@@ -15,7 +17,11 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { session, loading } = useSupabaseSession();
-
+  useEffect(() => {
+  if (!isLoading && session) {
+    console.log('User ID:', session.user.id);
+  }
+}, [isLoading, session]);
   const sendQuery = async () => {
     if (!session?.user?.id) {
       setMessages(prev => [...prev, {
