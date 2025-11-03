@@ -1,4 +1,4 @@
-import { Home, User, LayoutDashboard, Bot, Wrench, FileWarning,Upload  } from 'lucide-react';
+import { Home, User, LayoutDashboard, Bot, Wrench, FileWarning, Upload } from 'lucide-react';
 
 
 import { z } from 'zod';
@@ -25,7 +25,6 @@ const routes = [
         path: pathsConfig.app.dataupload,
         Icon: <Upload  className={iconClasses} />,
       },
-
 
       {
         label: 'common:routes.dashboard',

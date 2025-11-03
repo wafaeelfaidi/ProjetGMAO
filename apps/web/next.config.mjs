@@ -30,6 +30,13 @@ const config = {
   outputFileTracingIncludes: {
     '/*': ['./content/**/*'],
   },
+  webpack: (config, { isServer }) => {
+    // Fix for pdfjs-dist worker in browser
+    if (!isServer) {
+      config.resolve.alias.canvas = false;
+    }
+    return config;
+  },
   experimental: {
     mdxRs: true,
     reactCompiler: ENABLE_REACT_COMPILER,
