@@ -82,6 +82,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Upload succeeded, get public URL
     const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(path);
     const publicUrl = urlData.publicUrl;
 
@@ -103,6 +104,30 @@ export async function POST(req: NextRequest) {
     if (insertError) {
       console.error("Insert error:", insertError);
       return NextResponse.json({ error: insertError.message }, { status: 500 });
+    }
+
+    // Notify backend to process the uploaded document (extract + embed + store)
+    try {
+      // backend is running at http://localhost:8000 (FastAPI)
+      const procRes = await fetch("http://localhost:8000/process_document", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+          file_url: publicUrl,
+          user_id: user.id,
+        }).toString(),
+      });
+
+      if (!procRes.ok) {
+        const txt = await procRes.text();
+        console.warn("process_document responded with non-ok status:", procRes.status, txt);
+      } else {
+        console.log("process_document called successfully for", publicUrl);
+      }
+    } catch (err) {
+      console.error("Failed to call /process_document:", err);
     }
 
     return NextResponse.json({

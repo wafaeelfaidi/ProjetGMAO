@@ -3,6 +3,9 @@ import { useState } from "react";
 import { useSupabaseSession } from "~/lib/supabase/use-session";
 import { Send, MessageCircle, User, Bot } from "lucide-react";
 import { useEffect } from 'react';
+import React from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 
 interface Message {
@@ -113,7 +116,7 @@ export default function ChatPage() {
         {/* Chat Container */}
         <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
           {/* Messages Area */}
-          <div className="h-96 overflow-y-auto p-6 space-y-4">
+          <div className="h-96 min-h-[220px] overflow-y-auto p-6 space-y-4">
             {messages.length === 0 ? (
               <div className="text-center text-slate-500 py-12">
                 <Bot className="w-12 h-12 mx-auto mb-4 text-slate-300" />
@@ -124,26 +127,34 @@ export default function ChatPage() {
               messages.map((message) => (
                 <div
                   key={message.id}
-                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                  className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
                 >
                   <div
                     className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                      message.role === 'user'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-slate-100 text-slate-900'
+                      message.role === "user"
+                        ? "bg-blue-600 text-white"
+                        : "bg-slate-100 text-slate-900"
                     }`}
                   >
                     <div className="flex items-center mb-1">
-                      {message.role === 'user' ? (
+                      {message.role === "user" ? (
                         <User className="w-4 h-4 mr-2" />
                       ) : (
                         <Bot className="w-4 h-4 mr-2" />
                       )}
                       <span className="text-xs opacity-75">
-                        {message.timestamp.toLocaleTimeString()}
+                        {new Date(message.timestamp).toLocaleTimeString()}
                       </span>
                     </div>
-                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                    {message.role === "assistant" ? (
+                      <div className="prose prose-sm text-slate-900">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                          {message.content}
+                        </ReactMarkdown>
+                      </div>
+                    ) : (
+                      <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                    )}
                   </div>
                 </div>
               ))

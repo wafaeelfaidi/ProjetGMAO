@@ -46,5 +46,8 @@
     "react-markdown": "^10.1.0",
     "turbo": "2.5.8",
     "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "remark-gfm": "^4.0.1"
   }
 }
