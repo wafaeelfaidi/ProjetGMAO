@@ -16,6 +16,7 @@
 
 /* plugins - update the below if you add a new plugin */
 @plugin "tailwindcss-animate";
+@plugin "@tailwindcss/typography";
 
 /* content sources - update the below if you add a new path */
 @source "../../../packages/*/src/**/*.{ts,tsx}";

@@ -45,3 +45,8 @@ yarn-error.log*
 
 # contentlayer
 .contentlayer/
+
+apps/backend/env
+
+apps/backend/env2
+env

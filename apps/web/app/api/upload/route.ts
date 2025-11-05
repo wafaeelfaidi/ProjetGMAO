@@ -7,20 +7,45 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const BUCKET = process.env.SUPABASE_BUCKET || "Docs";
 
+if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+  console.error("Missing SUPABASE_URL or SUPABASE_SERVICE_KEY in environment");
+}
+
 export async function POST(req: NextRequest) {
   try {
+    // defensive: log the target URL (do NOT log secrets)
+    console.log("Upload route using SUPABASE_URL:", SUPABASE_URL);
+
+    // create client with service role key (server-side)
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
     // Get the user's session token
     const authHeader = req.headers.get("authorization");
     const access_token = authHeader?.replace("Bearer ", "");
 
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser(access_token);
+    // guard: do not call getUser without a token
+    if (!access_token) {
+      console.warn("No access token provided in Authorization header");
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    if (userError || !user) {
+    // wrap network calls so DNS/connect errors return friendly response
+    let user;
+    try {
+      const userRes = await supabase.auth.getUser(access_token);
+      user = userRes.data.user;
+      if (userRes.error) {
+        console.warn("supabase.auth.getUser error:", userRes.error);
+      }
+    } catch (netErr) {
+      console.error("Network error calling Supabase auth:", netErr);
+      return NextResponse.json(
+        { error: "Cannot reach Supabase auth service (DNS/network error)" },
+        { status: 502 }
+      );
+    }
+
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -35,27 +60,32 @@ export async function POST(req: NextRequest) {
     const arrayBuffer = await file.arrayBuffer();
     const fileBytes = new Uint8Array(arrayBuffer);
 
-    // Upload path: per-user folder
-    const username = user.user_metadata?.username || user.email; // fallback to email if username not set
+    const username = user.user_metadata?.username || user.email;
     const path = `${username}/${Date.now()}_${fileName}`;
 
-    // Upload to Supabase storage
-    const { error: uploadError } = await supabase.storage
-      .from(BUCKET)
-      .upload(path, fileBytes, {
-        contentType: file.type,
-      });
-
-    if (uploadError) {
-      console.error("Upload error:", uploadError);
-      return NextResponse.json({ error: uploadError.message }, { status: 500 });
+    // Upload to Supabase storage with network error handling
+    try {
+      const { error: uploadError } = await supabase.storage
+        .from(BUCKET)
+        .upload(path, fileBytes, {
+          contentType: file.type,
+        });
+      if (uploadError) {
+        console.error("Upload error:", uploadError);
+        return NextResponse.json({ error: uploadError.message }, { status: 500 });
+      }
+    } catch (netErr) {
+      console.error("Network error during storage upload:", netErr);
+      return NextResponse.json(
+        { error: "Cannot reach Supabase storage service (DNS/network error)" },
+        { status: 502 }
+      );
     }
 
-    // Get public URL
+    // Upload succeeded, get public URL
     const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(path);
     const publicUrl = urlData.publicUrl;
 
-    // Insert metadata
     const { data: insertData, error: insertError } = await supabase
       .from("uploaded_docs")
       .insert([
@@ -74,6 +104,30 @@ export async function POST(req: NextRequest) {
     if (insertError) {
       console.error("Insert error:", insertError);
       return NextResponse.json({ error: insertError.message }, { status: 500 });
+    }
+
+    // Notify backend to process the uploaded document (extract + embed + store)
+    try {
+      // backend is running at http://localhost:8000 (FastAPI)
+      const procRes = await fetch("http://localhost:8000/process_document", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+          file_url: publicUrl,
+          user_id: user.id,
+        }).toString(),
+      });
+
+      if (!procRes.ok) {
+        const txt = await procRes.text();
+        console.warn("process_document responded with non-ok status:", procRes.status, txt);
+      } else {
+        console.log("process_document called successfully for", publicUrl);
+      }
+    } catch (err) {
+      console.error("Failed to call /process_document:", err);
     }
 
     return NextResponse.json({

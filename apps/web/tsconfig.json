@@ -25,5 +25,13 @@
     "lib/**/*.ts",
     "app"
   ],
-  "exclude": ["node_modules", ".next"]
+  "exclude": ["node_modules", ".next"],
+
+
+
+
+
 }
+
+
+

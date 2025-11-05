@@ -64,11 +64,15 @@
   "newVersionSubmitButton": "Reload and Update",
   "back": "Back",
   "routes": {
+    "dataUpload": "Data Upload",
     "home": "Home",
     "account": "Account",
     "members": "Members",
     "billing": "Billing",
     "dashboard": "Dashboard",
+    "chatbot": "Chatbot",
+    "RPN": "RPN",
+    "PDR": "PDR",
     "settings": "Settings",
     "profile": "Profile",
     "application": "Application"
@@ -86,23 +90,6 @@
     "description": "This website uses cookies to ensure you get the best experience on our website.",
     "reject": "Reject",
     "accept": "Accept"
-  },
-
-
-
-
-  "routes": {
-    "dataUpload": "Data Upload",
-    "home": "Home",
-    "account": "Account",
-    "members": "Members",
-    "billing": "Billing",
-    "dashboard": "Dashboard",
-    "chatbot": "Chatbot",
-    "RPN": "RPN",
-    "PDR": "PDR",
-    "settings": "Settings",
-    "profile": "Profile",
-    "application": "Application"
-}}
+  }
+}
 
