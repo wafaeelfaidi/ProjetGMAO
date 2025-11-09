@@ -17,6 +17,7 @@ interface Message {
   content: string;
   timestamp: Date;
   sources?: string[];
+  sourceNames?: string[]; // Document file names for display
 }
 
 export default function ChatPage() {
@@ -124,6 +125,7 @@ export default function ChatPage() {
         content: response.message,
         timestamp: new Date(),
         sources: response.sources,
+        sourceNames: response.sourceNames,
       };
 
       setMessages(prev => [...prev, assistantMessage]);
@@ -289,11 +291,16 @@ export default function ChatPage() {
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>
                           {message.content}
                         </ReactMarkdown>
-                        {message.sources && message.sources.length > 0 && (
+                        {message.sourceNames && message.sourceNames.length > 0 && (
                           <div className="mt-2 pt-2 border-t border-slate-300">
-                            <p className="text-xs text-slate-600">
-                              📄 Sources: {message.sources.length} document(s)
+                            <p className="text-xs text-slate-600 font-semibold mb-1">
+                              📄 Referenced Documents:
                             </p>
+                            <ul className="text-xs text-slate-600 list-none pl-0 space-y-0.5">
+                              {message.sourceNames.map((name, idx) => (
+                                <li key={idx}>• {name}</li>
+                              ))}
+                            </ul>
                           </div>
                         )}
                       </div>

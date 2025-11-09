@@ -15,11 +15,17 @@ export interface EmbedOptions {
   truncate?: "NONE" | "START" | "END";
 }
 
+export interface ChatMessage {
+  role: "USER" | "CHATBOT";
+  message: string;
+}
+
 export interface ChatOptions {
   model?: string;
   temperature?: number;
   maxTokens?: number;
   preamble?: string;
+  chatHistory?: ChatMessage[];
 }
 
 export interface EmbedResponse {
@@ -87,7 +93,7 @@ export class CohereClient {
   }
 
   /**
-   * Generate chat response with optional context
+   * Generate chat response with optional context and chat history
    */
   async chat(
     message: string,
@@ -99,6 +105,7 @@ export class CohereClient {
       temperature = 0.3,
       maxTokens = 2000,
       preamble,
+      chatHistory,
     } = options;
 
     const requestBody: any = {
@@ -118,6 +125,11 @@ export class CohereClient {
         id: `doc_${idx}`,
         text,
       }));
+    }
+
+    if (chatHistory && chatHistory.length > 0) {
+      // Include conversation history for context
+      requestBody.chat_history = chatHistory;
     }
 
     const response = await fetch(`${COHERE_API_URL}/chat`, {

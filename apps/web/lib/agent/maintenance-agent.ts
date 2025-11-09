@@ -5,8 +5,8 @@
 
 import { getCohereClient } from "../cohere/client";
 import { getVectorStore } from "../vector-store/local-store";
-import { addItem, getItemsByIndex, STORES } from "../client-storage/indexed-db";
-import type { ChatMessage } from "../client-storage/indexed-db";
+import { addItem, getItemsByIndex, STORES, getItem } from "../client-storage/indexed-db";
+import type { ChatMessage, StoredDocument } from "../client-storage/indexed-db";
 
 // Simple UUID generator
 function generateUUID(): string {
@@ -28,7 +28,8 @@ export interface AgentConfig {
 
 export interface AgentResponse {
   message: string;
-  sources?: string[];
+  sources?: string[]; // Document IDs
+  sourceNames?: string[]; // Document file names for display
   reasoning?: string;
 }
 
@@ -64,7 +65,7 @@ export class MaintenanceAgent {
       temperature: config.temperature ?? 0.3,
       maxTokens: config.maxTokens ?? 2000,
       useRAG: config.useRAG ?? true,
-      topK: config.topK ?? 10, // Increased from 5 to 10 for more context
+      topK: config.topK ?? 15, // Increased from 5 to 10 for more context
       similarityThreshold: config.similarityThreshold ?? 0.35, // Lowered from 0.5 to 0.3 for better recall
     };
   }
@@ -78,47 +79,42 @@ export class MaintenanceAgent {
       throw new Error("Cohere API key not set");
     }
 
-    let contextText = "";
+    let contextDocuments: string[] | undefined;
     let sources: string[] | undefined;
+    let sourceNames: string[] | undefined;
 
     // Retrieve relevant context if RAG is enabled
     if (this.config.useRAG) {
       const retrievalResult = await this.retrieveContext(query);
-      contextText = retrievalResult.context;
+      contextDocuments = retrievalResult.documents;
       sources = retrievalResult.sources;
+      
+      // Get document names for display
+      if (sources && sources.length > 0) {
+        sourceNames = await this.getDocumentNames(sources);
+      }
     }
 
-    // Build prompt with context (like chat.py)
-    const promptWithContext = contextText 
-      ? `You are a maintenance AI assistant. Use the provided context from technical documents to answer user questions accurately.
-      If you reference information from documents, mention the source clearly.
-
-Context:
-${contextText}
-
-Question:
-${query}`
-      : query;
-
-    // Generate response with prompt-based context
+    // Generate response using preamble and documents parameters
     const response = await cohereClient.chat(
-      promptWithContext,
-      undefined, // Don't use documents parameter
+      query,
+      contextDocuments,
       {
         model: "command-a-03-2025",
         temperature: this.config.temperature ?? 0.3,
-        maxTokens: this.config.maxTokens ?? 256,
-        preamble: undefined, // Don't use preamble when context is in prompt
+        maxTokens: this.config.maxTokens ?? 2000,
+        preamble: this.config.systemPrompt,
       }
     );
 
-    // Store message in history
+    // Store message in history with document references
     await this.storeMessage("user", query);
-    await this.storeMessage("assistant", response);
+    await this.storeMessage("assistant", response, sources);
 
     return {
       message: response,
       sources,
+      sourceNames,
     };
   }
 
@@ -126,13 +122,13 @@ ${query}`
    * Retrieve relevant context from vector store
    */
   private async retrieveContext(query: string): Promise<{
-    context: string;
+    documents: string[];
     sources: string[];
   }> {
     const cohereClient = getCohereClient();
     if (!cohereClient) {
       console.log("[RAG] No Cohere client available");
-      return { context: "", sources: [] };
+      return { documents: [], sources: [] };
     }
 
     const vectorStore = getVectorStore();
@@ -145,7 +141,7 @@ ${query}`
 
     if (!queryEmbedding) {
       console.log("[RAG] Failed to create query embedding");
-      return { context: "", sources: [] };
+      return { documents: [], sources: [] };
     }
 
     console.log("[RAG] Query embedding created, dimension:", queryEmbedding.length);
@@ -154,7 +150,7 @@ ${query}`
     const results = await vectorStore.search(
       queryEmbedding,
       this.userId,
-      this.config.topK ?? 5,
+      this.config.topK ?? 15,
       this.config.similarityThreshold ?? 0.35
     );
 
@@ -166,14 +162,33 @@ ${query}`
       console.warn("[RAG] No relevant chunks found! Check if documents are processed.");
     }
 
-    // Combine all chunk texts into single context string (like chat.py)
-    const context = results.map((r) => r.text).join("\n\n");
+    // Return documents as array of strings for Cohere's documents parameter
+    const documents = results.map((r) => r.text);
     const sources = [...new Set(results.map((r) => r.documentId))];
 
-    console.log(`[RAG] Using ${results.length} chunks from ${sources.length} document(s)`);
-    console.log(`[RAG] Total context length: ${context.length} characters`);
+    console.log(`[RAG] Using ${documents.length} chunks from ${sources.length} document(s)`);
 
-    return { context, sources };
+    return { documents, sources };
+  }
+
+  /**
+   * Get document names from document IDs
+   */
+  private async getDocumentNames(documentIds: string[]): Promise<string[]> {
+    const names: string[] = [];
+    
+    for (const docId of documentIds) {
+      try {
+        const doc = await getItem<StoredDocument>(STORES.DOCUMENTS, docId);
+        if (doc) {
+          names.push(doc.fileName);
+        }
+      } catch (error) {
+        console.error(`Failed to get document name for ${docId}:`, error);
+      }
+    }
+    
+    return names;
   }
 
   /**
@@ -181,7 +196,8 @@ ${query}`
    */
   private async storeMessage(
     role: "user" | "assistant",
-    content: string
+    content: string,
+    documentIds?: string[]
   ): Promise<void> {
     const message: ChatMessage = {
       id: generateUUID(),
@@ -189,6 +205,7 @@ ${query}`
       role,
       content,
       timestamp: Date.now(),
+      documentIds,
     };
 
     await addItem(STORES.CHAT_HISTORY, message);
