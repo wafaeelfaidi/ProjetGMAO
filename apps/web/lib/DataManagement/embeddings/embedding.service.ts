@@ -30,6 +30,7 @@ export type ProgressCallback = (progress: EmbeddingProgress) => void;
 export class EmbeddingService {
   private model: EmbedModel;
   private config: Required<EmbeddingConfig>;
+  private storage: any; // Can be IndexedDB or Supabase service
 
   private apiKey?: string;
 
@@ -42,6 +43,8 @@ export class EmbeddingService {
     };
     this.apiKey = config.apiKey;
     this.model = createEmbedModel(this.config.modelType, this.apiKey);
+    // Initialize with IndexedDB for backward compatibility
+    this.storage = indexedDBService;
   }
 
   /**
@@ -59,7 +62,7 @@ export class EmbeddingService {
         message: 'Extracting text from file...',
       });
 
-      const file = await indexedDBService.getFile(fileId);
+      const file = await this.storage.getFile(fileId);
       if (!file) {
         throw new Error('File not found');
       }
@@ -76,7 +79,7 @@ export class EmbeddingService {
       );
 
       // Update file metadata with text stats
-      await indexedDBService.updateFileMetadata(fileId, {
+      await this.storage.updateFileMetadata(fileId, {
         isProcessed: true,
         hasEmbeddings: false,
       });
@@ -136,7 +139,7 @@ export class EmbeddingService {
         message: 'Storing embeddings...',
       });
 
-      await indexedDBService.storeEmbeddings(embeddings);
+      await this.storage.storeEmbeddings(embeddings);
 
       // Complete
       onProgress?.({
@@ -147,6 +150,13 @@ export class EmbeddingService {
     } catch (error) {
       throw new Error(`Failed to process file: ${error}`);
     }
+  }
+
+  /**
+   * Set the storage backend (IndexedDB or Supabase)
+   */
+  setStorage(storage: any): void {
+    this.storage = storage;
   }
 
   /**
@@ -195,12 +205,12 @@ export class EmbeddingService {
       let embeddings: Embedding[] = [];
       
       if (fileId) {
-        embeddings = await indexedDBService.getEmbeddings(fileId);
+        embeddings = await this.storage.getEmbeddings(fileId);
       } else {
         // Get all files and their embeddings
-        const files = await indexedDBService.listFiles();
+        const files = await this.storage.listFiles();
         for (const file of files) {
-          const fileEmbeddings = await indexedDBService.getEmbeddings(file.id);
+          const fileEmbeddings = await this.storage.getEmbeddings(file.id);
           embeddings.push(...fileEmbeddings);
         }
       }

@@ -6,8 +6,8 @@ import { useCallback, useEffect, useState } from 'react';
 
 import type { EmbeddingProgress } from '~/lib/DataManagement/embeddings';
 import { embeddingService } from '~/lib/DataManagement/embeddings';
-import type { FileMetadata } from '~/lib/DataManagement/indexeddb.service';
-import { indexedDBService } from '~/lib/DataManagement/indexeddb.service';
+import type { FileMetadata } from '~/lib/DataManagement/supabase-file.service';
+import { useSupabaseFileService } from '~/lib/DataManagement/use-supabase-file-service';
 
 import { FileList } from './_components/file-list';
 import { FileUpload } from './_components/file-upload';
@@ -16,6 +16,8 @@ import { ProcessingModal } from './_components/processing-modal';
 import { SearchPanel } from './_components/search-panel';
 
 export default function DataSectionPage() {
+  const fileService = useSupabaseFileService();
+  
   const [files, setFiles] = useState<FileMetadata[]>([]);
   const [isProcessing, setIsProcessing] = useState<Set<string>>(new Set());
   const [processingFile, setProcessingFile] = useState<{
@@ -55,21 +57,21 @@ export default function DataSectionPage() {
 
   const initializeDB = async () => {
     try {
-      await indexedDBService.initialize();
+      await fileService.initialize();
       await loadFiles();
     } catch (error) {
-      console.error('Failed to initialize database:', error);
-      alert('Failed to initialize database. Please refresh the page.');
+      console.error('Failed to initialize:', error);
+      alert('Failed to initialize. Please refresh the page.');
     }
   };
 
   const loadFiles = async () => {
     try {
-      const fileList = await indexedDBService.listFiles();
+      const fileList = await fileService.listFiles();
       setFiles(fileList);
       
       // Load chunk count
-      const chunkCount = await indexedDBService.getEmbeddingsCount();
+      const chunkCount = await fileService.getEmbeddingsCount();
       setTotalChunks(chunkCount);
     } catch (error) {
       console.error('Failed to load files:', error);
@@ -79,7 +81,7 @@ export default function DataSectionPage() {
   const handleFilesSelected = async (selectedFiles: File[]) => {
     for (const file of selectedFiles) {
       try {
-        await indexedDBService.storeFile(file);
+        await fileService.storeFile(file);
         await loadFiles();
       } catch (error) {
         console.error(`Failed to upload ${file.name}:`, error);
@@ -91,7 +93,7 @@ export default function DataSectionPage() {
   const handleDeleteFile = async (fileId: string) => {
     if (confirm('Are you sure you want to delete this file?')) {
       try {
-        await indexedDBService.deleteFile(fileId);
+        await fileService.deleteFile(fileId);
         await loadFiles();
       } catch (error) {
         console.error('Failed to delete file:', error);
@@ -115,6 +117,9 @@ export default function DataSectionPage() {
     setProcessingProgress(null);
 
     try {
+      // Update embedding service to use Supabase storage
+      embeddingService.setStorage(fileService);
+      
       await embeddingService.processFile(fileId, (progress) => {
         setProcessingProgress(progress);
       });
@@ -145,6 +150,9 @@ export default function DataSectionPage() {
   ) => {
     setIsSearching(true);
     try {
+      // Update embedding service to use Supabase storage
+      embeddingService.setStorage(fileService);
+      
       const results = await embeddingService.search(query, fileId, topK);
       setSearchResults(results);
     } catch (error) {

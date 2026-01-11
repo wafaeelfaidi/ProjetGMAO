@@ -3,12 +3,13 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { embeddingService } from '~/lib/DataManagement/embeddings';
-import type { FileMetadata } from '~/lib/DataManagement/indexeddb.service';
-import { indexedDBService } from '~/lib/DataManagement/indexeddb.service';
+import type { FileMetadata } from '~/lib/DataManagement/supabase-file.service';
+import { useSupabaseFileService } from '~/lib/DataManagement/use-supabase-file-service';
 
 import { ChatbotPanel } from './_components/chatbot-panel';
 
 export default function ChatbotPage() {
+  const fileService = useSupabaseFileService();
   const [files, setFiles] = useState<FileMetadata[]>([]);
   const [embeddingModelInfo, setEmbeddingModelInfo] = useState({
     type: 'simple',
@@ -22,8 +23,11 @@ export default function ChatbotPage() {
 
   const initializeDB = async () => {
     try {
-      await indexedDBService.initialize();
+      await fileService.initialize();
       await loadFiles();
+      
+      // Update embedding service to use Supabase
+      embeddingService.setStorage(fileService);
       
       // Restore the embedding model that was used to process files
       const currentModelType = embeddingService.getModelInfo().type;
@@ -41,14 +45,14 @@ export default function ChatbotPage() {
         dimension: embeddingService.getModelInfo().dimension,
       });
     } catch (error) {
-      console.error('Failed to initialize database:', error);
-      alert('Failed to initialize database. Please refresh the page.');
+      console.error('Failed to initialize:', error);
+      alert('Failed to initialize. Please refresh the page.');
     }
   };
 
   const loadFiles = async () => {
     try {
-      const fileList = await indexedDBService.listFiles();
+      const fileList = await fileService.listFiles();
       setFiles(fileList);
     } catch (error) {
       console.error('Failed to load files:', error);

@@ -22,6 +22,64 @@ const getUser = (request: NextRequest, response: NextResponse) => {
   return supabase.auth.getClaims();
 };
 
+// Helper function to get user role from database
+const getUserRole = async (request: NextRequest, response: NextResponse) => {
+  const supabase = createMiddlewareClient(request, response);
+  
+  const { data: userData } = await supabase.auth.getClaims();
+  if (!userData?.claims) return null;
+  
+  const { data: account, error } = await supabase
+    .from('accounts')
+    .select('role')
+    .eq('id', userData.claims.sub)
+    .single();
+  
+  if (error || !account) return null;
+  
+  return account.role as 'admin' | 'operator';
+};
+
+// Role-based access control check
+const checkRoleAccess = async (
+  request: NextRequest,
+  response: NextResponse,
+  pathname: string
+): Promise<NextResponse | undefined> => {
+  const role = await getUserRole(request, response);
+  
+  // If role not found, allow access (for backward compatibility)
+  if (!role) return undefined;
+  
+  // Admin has access to everything
+  if (role === 'admin') return undefined;
+  
+  // Operator access restrictions
+  // Allowed paths for operators: home, dashboard, chatbot, maintenance planning
+  const operatorAllowedPaths = [
+    '/home',
+    '/home/csv-dashboard',
+    '/home/chatbot',
+    '/home/maintenance',
+    '/home/settings',
+  ];
+  
+  // Check if the current path is allowed for operators
+  const isAllowed = operatorAllowedPaths.some(allowedPath => {
+    // Exact match or starts with allowed path
+    return pathname === allowedPath || pathname.startsWith(allowedPath + '/');
+  });
+  
+  if (!isAllowed) {
+    // Redirect operators to home page if trying to access restricted pages
+    return NextResponse.redirect(
+      new URL(pathsConfig.app.home, request.nextUrl.origin).href
+    );
+  }
+  
+  return undefined;
+};
+
 export async function middleware(request: NextRequest) {
   const response = NextResponse.next();
 
@@ -147,6 +205,12 @@ function getPatterns() {
           return NextResponse.redirect(
             new URL(pathsConfig.auth.verifyMfa, origin).href,
           );
+        }
+
+        // Check role-based access control
+        const roleCheck = await checkRoleAccess(req, res, next);
+        if (roleCheck) {
+          return roleCheck;
         }
       },
     },
