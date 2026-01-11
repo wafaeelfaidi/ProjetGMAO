@@ -1,0 +1,128 @@
+---
+title: Project GMAO - Functional Pipeline
+---
+
+graph TB
+    %% Data Sources
+    subgraph DATA["📊 Data Sources"]
+        AMDEC_DATA[("AMDEC.csv<br/>Historical maintenance<br/>interventions with failures,<br/>costs, downtimes")]
+        SENSOR_DATA[("Final copy.csv<br/>Real-time sensor data<br/>18 captors per machine")]
+    end
+
+    %% Core Functionalities
+    subgraph FUNC["🎯 Core Functionalities"]
+        
+        subgraph AMDEC_FUNC["1️⃣ AMDEC Analysis & Generation"]
+            AMDEC_PARSE["Parse Historical Data<br/>• Extract failure types<br/>• Calculate frequencies<br/>• Compute costs & downtime"]
+            AMDEC_STAT["Statistical Analysis<br/>• Failure mode distribution<br/>• Risk severity scoring<br/>• Organ/part criticality"]
+            AMDEC_GEN["Generate AMDEC Report<br/>• Failure modes per equipment<br/>• Probability × Severity<br/>• Recommended actions"]
+        end
+        
+        subgraph PRED_FUNC["2️⃣ Predictive Maintenance"]
+            ML_PREDICT["ML-Based Prediction<br/>• Load pre-trained models<br/>• Process 18 sensor values<br/>• Predict failure probability"]
+            MAINT_FORECAST["Maintenance Forecasting<br/>• Calculate TBI (Time Between Interventions)<br/>• Predict next maintenance date<br/>• Generate probability windows"]
+            CALENDAR_GEN["Calendar Generation<br/>• Create scheduled events<br/>• Assign probability bands (Low/Med/High)<br/>• Calculate expected costs"]
+        end
+        
+        subgraph OT_FUNC["3️⃣ Work Order Management (AI-Powered)"]
+            OT_CREATE["Create Work Orders<br/>• AI-generated descriptions<br/>• Auto-assign priority<br/>• Link to equipment"]
+            OT_TRACK["Track Execution<br/>• Monitor progress<br/>• Record interventions<br/>• Update history"]
+        end
+        
+        subgraph CHAT_FUNC["4️⃣ AI Chatbot Assistant"]
+            CHAT_QUERY["Natural Language Queries<br/>• Ask about equipment status<br/>• Request maintenance schedules<br/>• Get failure predictions"]
+            CHAT_INSIGHTS["Provide Insights<br/>• Analyze trends<br/>• Suggest preventive actions<br/>• Answer technical questions"]
+        end
+        
+        subgraph VIZ_FUNC["5️⃣ Data Visualization & Dashboard"]
+            CSV_VIZ["CSV Dashboard<br/>• Upload & explore data<br/>• Interactive charts<br/>• Filter by machine/date"]
+            BREAKDOWN_VIZ["Breakdown Prediction View<br/>• Real-time ML predictions<br/>• Input sensor readings<br/>• Display failure probabilities"]
+            DATA_MANAGE["Data Management<br/>• Import/Export data<br/>• Data cleaning<br/>• Historical archives"]
+        end
+    end
+
+    %% User Workflows
+    subgraph WORKFLOWS["🔄 User Workflows"]
+        
+        USER1["Maintenance Manager"]
+        USER2["Technician"]
+        USER3["Data Analyst"]
+        
+        WORKFLOW1["View Calendar<br/>Plan interventions"]
+        WORKFLOW2["Execute Work Orders<br/>Record results"]
+        WORKFLOW3["Analyze Performance<br/>Optimize schedules"]
+    end
+
+    %% Data Flow - AMDEC
+    AMDEC_DATA -->|Read & Parse| AMDEC_PARSE
+    AMDEC_PARSE -->|Statistics| AMDEC_STAT
+    AMDEC_STAT -->|Generate| AMDEC_GEN
+    AMDEC_GEN -->|Display| WORKFLOWS
+    
+    %% Data Flow - Predictive Maintenance
+    SENSOR_DATA -->|Real-time feed| ML_PREDICT
+    AMDEC_DATA -->|Historical patterns| MAINT_FORECAST
+    ML_PREDICT -->|Failure probability| MAINT_FORECAST
+    MAINT_FORECAST -->|Scheduling| CALENDAR_GEN
+    CALENDAR_GEN -->|Events| WORKFLOW1
+    
+    %% Data Flow - Work Orders
+    AMDEC_GEN -->|Trigger OT| OT_CREATE
+    CALENDAR_GEN -->|Schedule OT| OT_CREATE
+    OT_CREATE -->|Assign| WORKFLOW2
+    OT_TRACK -->|Update history| AMDEC_DATA
+    
+    %% Data Flow - Chatbot
+    AMDEC_STAT -->|Knowledge base| CHAT_QUERY
+    MAINT_FORECAST -->|Predictions| CHAT_QUERY
+    CHAT_QUERY -->|AI Processing| CHAT_INSIGHTS
+    CHAT_INSIGHTS -->|Responses| WORKFLOWS
+    
+    %% Data Flow - Visualization
+    SENSOR_DATA -->|Live data| CSV_VIZ
+    AMDEC_DATA -->|Historical| CSV_VIZ
+    SENSOR_DATA -->|Input| BREAKDOWN_VIZ
+    ML_PREDICT -->|Results| BREAKDOWN_VIZ
+    CSV_VIZ -->|Exports| DATA_MANAGE
+    BREAKDOWN_VIZ -->|Insights| WORKFLOW3
+    
+    %% User Interactions
+    USER1 -->|Uses| WORKFLOW1
+    USER2 -->|Uses| WORKFLOW2
+    USER3 -->|Uses| WORKFLOW3
+    
+    WORKFLOW1 -->|Views| CALENDAR_GEN
+    WORKFLOW1 -->|Reviews| AMDEC_GEN
+    WORKFLOW2 -->|Executes| OT_CREATE
+    WORKFLOW2 -->|Updates| OT_TRACK
+    WORKFLOW3 -->|Analyzes| CSV_VIZ
+    WORKFLOW3 -->|Monitors| BREAKDOWN_VIZ
+
+    %% Output Summary
+    subgraph OUTPUT["📤 System Outputs"]
+        OUT1["📋 AMDEC Reports<br/>Failure modes, risks, actions"]
+        OUT2["📅 Maintenance Calendar<br/>Scheduled interventions with probabilities"]
+        OUT3["📝 Work Orders<br/>AI-generated tasks"]
+        OUT4["💬 AI Recommendations<br/>Chatbot insights"]
+        OUT5["📊 Analytics Dashboard<br/>Performance metrics"]
+    end
+    
+    AMDEC_GEN --> OUT1
+    CALENDAR_GEN --> OUT2
+    OT_CREATE --> OUT3
+    CHAT_INSIGHTS --> OUT4
+    CSV_VIZ --> OUT5
+    BREAKDOWN_VIZ --> OUT5
+
+    %% Styling
+    classDef dataStyle fill:#4A90E2,stroke:#2E5C8A,stroke-width:3px,color:#fff
+    classDef funcStyle fill:#50C878,stroke:#368F5A,stroke-width:3px,color:#fff
+    classDef workflowStyle fill:#FFB84D,stroke:#CC8F3D,stroke-width:3px,color:#000
+    classDef outputStyle fill:#9B59B6,stroke:#6E3E82,stroke-width:3px,color:#fff
+    classDef userStyle fill:#E74C3C,stroke:#A83428,stroke-width:2px,color:#fff
+    
+    class AMDEC_DATA,SENSOR_DATA dataStyle
+    class AMDEC_PARSE,AMDEC_STAT,AMDEC_GEN,ML_PREDICT,MAINT_FORECAST,CALENDAR_GEN,OT_CREATE,OT_TRACK,CHAT_QUERY,CHAT_INSIGHTS,CSV_VIZ,BREAKDOWN_VIZ,DATA_MANAGE funcStyle
+    class WORKFLOW1,WORKFLOW2,WORKFLOW3 workflowStyle
+    class OUT1,OUT2,OUT3,OUT4,OUT5 outputStyle
+    class USER1,USER2,USER3 userStyle

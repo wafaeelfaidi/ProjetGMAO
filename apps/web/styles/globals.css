@@ -1,0 +1,142 @@
+/*
+* global.css
+*
+* Global styles for the entire application
+ */
+
+/* Tailwind CSS */
+@import 'tailwindcss';
+
+/* local styles - update the below if you add a new style */
+@import './theme.css';
+@import './theme.utilities.css';
+@import './shadcn-ui.css';
+@import './markdoc.css';
+@import './makerkit.css';
+
+/* plugins - update the below if you add a new plugin */
+@plugin "tailwindcss-animate";
+
+/* content sources - update the below if you add a new path */
+@source "../../../packages/*/src/**/*.{ts,tsx}";
+@source "../../../packages/features/*/src/**/*.{ts,tsx}";
+@source "../../../packages/billing/*/src/**/*.{ts,tsx}";
+@source "../../../packages/plugins/*/src/**/*.{ts,tsx}";
+@source "../../../packages/cms/*/src/**/*.{ts,tsx}";
+@source "../{app,components,config,lib}/**/*.{ts,tsx}";
+
+/* variants - update the below if you add a new variant */
+@variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    background-image: 
+      radial-gradient(circle at 20% 50%, rgba(156, 163, 175, 0.03) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(156, 163, 175, 0.03) 0%, transparent 50%);
+  }
+
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--border, currentColor);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: theme(--color-muted-foreground);
+  }
+
+  /* Enhanced white and grey theme */
+  .dark body {
+    background-image: 
+      radial-gradient(circle at 20% 50%, rgba(156, 163, 175, 0.05) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(156, 163, 175, 0.05) 0%, transparent 50%);
+  }
+
+  /* Sidebar enhancements */
+  [data-sidebar] {
+    @apply border-r border-border/50;
+    background: linear-gradient(to bottom, var(--sidebar-background), var(--sidebar-background) 95%, rgba(156, 163, 175, 0.02));
+  }
+
+  .dark [data-sidebar] {
+    background: linear-gradient(to bottom, var(--sidebar-background), rgba(249, 250, 251, 0.98) 95%, rgba(156, 163, 175, 0.05));
+  }
+
+  /* Card enhancements */
+  [data-card] {
+    @apply border border-border/50;
+    background: linear-gradient(135deg, var(--card) 0%, var(--card) 100%);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+
+  .dark [data-card] {
+    box-shadow: 0 1px 3px rgba(156, 163, 175, 0.1);
+  }
+
+  /* Button hover effects */
+  button:not(:disabled):hover,
+  a[role="button"]:hover {
+    transition: all 0.2s ease;
+  }
+
+  /* Focus rings with grey */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-accent ring-offset-2 ring-offset-background;
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-muted/30;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-accent/30 hover:bg-accent/50 rounded;
+  }
+
+  .dark ::-webkit-scrollbar-thumb {
+    @apply bg-accent/20 hover:bg-accent/40;
+  }
+
+  /* Input fields dark theme override */
+  .dark input[type="text"],
+  .dark input[type="email"],
+  .dark input[type="number"],
+  .dark input[type="date"],
+  .dark input[type="time"],
+  .dark textarea,
+  .dark select {
+    @apply bg-gray-50 border-gray-300 text-gray-900;
+  }
+
+  .dark input[type="text"]:focus,
+  .dark input[type="email"]:focus,
+  .dark input[type="number"]:focus,
+  .dark input[type="date"]:focus,
+  .dark input[type="time"]:focus,
+  .dark textarea:focus,
+  .dark select:focus {
+    @apply border-gray-400 ring-2 ring-gray-400/50;
+  }
+
+  /* Override dark backgrounds in light mode */
+  .dark [class*="bg-white"],
+  .dark [class*="bg-gray-50"],
+  .dark [class*="bg-slate-50"],
+  .dark [class*="bg-blue-50"] {
+    @apply bg-gray-50;
+  }
+
+  .dark [class*="bg-white/"] {
+    background-color: rgba(249, 250, 251, 0.5) !important;
+  }
+}

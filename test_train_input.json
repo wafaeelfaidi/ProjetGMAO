@@ -1,0 +1,25 @@
+{
+  "data": [
+    [25, 30000, "HighSchool", "No"],
+    [35, 50000, "Bachelor", "Yes"],
+    [45, 60000, "Master", "Yes"],
+    [28, 35000, "HighSchool", "No"],
+    [52, 75000, "Master", "Yes"],
+    [33, 45000, "Bachelor", "No"],
+    [41, 55000, "Master", "Yes"],
+    [29, 32000, "HighSchool", "No"],
+    [38, 48000, "Bachelor", "Yes"],
+    [50, 70000, "Master", "Yes"]
+  ],
+  "columns": ["Age", "Income", "Education", "Purchased"],
+  "target_column": "Purchased",
+  "feature_columns": ["Age", "Income", "Education"],
+  "cleaning_options": {
+    "remove_duplicates": true,
+    "replace_missing_numerical": true,
+    "replace_missing_categorical": true,
+    "convert_dates": false,
+    "one_hot_encode": false,
+    "normalize_features": true
+  }
+}
