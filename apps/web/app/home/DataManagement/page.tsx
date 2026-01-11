@@ -1,7 +1,7 @@
 'use client';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@kit/ui/tabs';
-import { Database, FileText, Search } from 'lucide-react';
+import { FileText, BarChart3 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
 import type { EmbeddingProgress } from '~/lib/DataManagement/embeddings';
@@ -11,9 +11,8 @@ import { useSupabaseFileService } from '~/lib/DataManagement/use-supabase-file-s
 
 import { FileList } from './_components/file-list';
 import { FileUpload } from './_components/file-upload';
-import { ModelConfig } from './_components/model-config';
 import { ProcessingModal } from './_components/processing-modal';
-import { SearchPanel } from './_components/search-panel';
+import { DocumentVisualization } from './_components/document-visualization';
 
 export default function DataSectionPage() {
   const fileService = useSupabaseFileService();
@@ -27,32 +26,12 @@ export default function DataSectionPage() {
   const [processingProgress, setProcessingProgress] =
     useState<EmbeddingProgress | null>(null);
 
-  const [searchResults, setSearchResults] = useState<
-    Array<{
-      fileId: string;
-      chunkIndex: number;
-      text: string;
-      similarity: number;
-    }>
-  >([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [modelInfo, setModelInfo] = useState(embeddingService.getModelInfo());
-  const [totalChunks, setTotalChunks] = useState(0);
-
-  // Initialize IndexedDB on mount and restore saved API keys
+  // Initialize Supabase storage on mount and set Cohere as default model
   useEffect(() => {
     initializeDB();
     
-    // Restore saved API key for current model if exists
-    const currentModelType = embeddingService.getModelInfo().type;
-    const savedApiKey = localStorage.getItem(`embedding_api_key_${currentModelType}`);
-    if (savedApiKey && currentModelType !== 'simple') {
-      embeddingService.setModel(
-        currentModelType as 'simple' | 'openai' | 'cohere' | 'mistral' | 'gemini',
-        savedApiKey
-      );
-      setModelInfo(embeddingService.getModelInfo());
-    }
+    // Set Supabase as the storage backend for embedding service
+    embeddingService.setStorage(fileService);
   }, []);
 
   const initializeDB = async () => {
@@ -69,19 +48,16 @@ export default function DataSectionPage() {
     try {
       const fileList = await fileService.listFiles();
       setFiles(fileList);
-      
-      // Load chunk count
-      const chunkCount = await fileService.getEmbeddingsCount();
-      setTotalChunks(chunkCount);
     } catch (error) {
       console.error('Failed to load files:', error);
     }
   };
 
-  const handleFilesSelected = async (selectedFiles: File[]) => {
+  const handleFilesSelected = async (selectedFiles: File[], isPublic: boolean) => {
+    console.log('📤 handleFilesSelected called with isPublic:', isPublic);
     for (const file of selectedFiles) {
       try {
-        await fileService.storeFile(file);
+        await fileService.storeFile(file, isPublic);
         await loadFiles();
       } catch (error) {
         console.error(`Failed to upload ${file.name}:`, error);
@@ -117,7 +93,7 @@ export default function DataSectionPage() {
     setProcessingProgress(null);
 
     try {
-      // Update embedding service to use Supabase storage
+      // Storage is already set in useEffect, but ensure it's set
       embeddingService.setStorage(fileService);
       
       await embeddingService.processFile(fileId, (progress) => {
@@ -141,41 +117,15 @@ export default function DataSectionPage() {
         setProcessingProgress(null);
       }, 1500);
     }
-  }, [files]);
-
-  const handleSearch = async (
-    query: string,
-    fileId?: string,
-    topK: number = 5,
-  ) => {
-    setIsSearching(true);
+  }, [files, fileService]);
+  const handleVisibilityToggle = async (fileId: string, isPublic: boolean) => {
     try {
-      // Update embedding service to use Supabase storage
-      embeddingService.setStorage(fileService);
-      
-      const results = await embeddingService.search(query, fileId, topK);
-      setSearchResults(results);
+      await fileService.updateFileMetadata(fileId, { isPublic });
+      await loadFiles();
     } catch (error) {
-      console.error('Search failed:', error);
-      alert(`Search failed: ${error}`);
-    } finally {
-      setIsSearching(false);
+      console.error('Failed to update file visibility:', error);
+      alert('Failed to update file visibility');
     }
-  };
-
-  const handleModelChange = (
-    modelType: 'simple' | 'openai' | 'cohere' | 'mistral' | 'gemini',
-    apiKey?: string,
-  ) => {
-    embeddingService.setModel(modelType, apiKey);
-    
-    // Save API key to localStorage for persistence
-    if (apiKey) {
-      localStorage.setItem(`embedding_api_key_${modelType}`, apiKey);
-    }
-    
-    // Update model info to trigger re-render
-    setModelInfo(embeddingService.getModelInfo());
   };
 
   return (
@@ -183,24 +133,19 @@ export default function DataSectionPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">Data Section</h1>
         <p className="text-gray-600">
-          Upload files, process them for embedding, and search through your
-          documents
+          Upload and manage your documents with interactive visualizations
         </p>
       </div>
 
       <Tabs defaultValue="files" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 mb-6">
+        <TabsList className="grid w-full grid-cols-2 mb-6">
           <TabsTrigger value="files">
             <FileText className="w-4 h-4 mr-2" />
             Files
           </TabsTrigger>
-          <TabsTrigger value="search">
-            <Search className="w-4 h-4 mr-2" />
-            Search
-          </TabsTrigger>
-          <TabsTrigger value="database">
-            <Database className="w-4 h-4 mr-2" />
-            Database
+          <TabsTrigger value="visualization">
+            <BarChart3 className="w-4 h-4 mr-2" />
+            Visualization
           </TabsTrigger>
         </TabsList>
 
@@ -210,54 +155,13 @@ export default function DataSectionPage() {
             files={files}
             onDelete={handleDeleteFile}
             onProcess={handleProcessFile}
+            onVisibilityToggle={handleVisibilityToggle}
             isProcessing={isProcessing}
           />
         </TabsContent>
 
-        <TabsContent value="search">
-          <SearchPanel
-            files={files.filter((f) => f.isProcessed)}
-            onSearch={handleSearch}
-            results={searchResults}
-            isSearching={isSearching}
-          />
-        </TabsContent>
-
-        <TabsContent value="database" className="space-y-4">
-          <div className="border rounded-lg p-6">
-            <h3 className="text-lg font-semibold mb-4">Database Statistics</h3>
-            <div className="grid grid-cols-4 gap-4">
-              <div className="bg-blue-100 dark:bg-blue-950/30 p-4 rounded-lg border border-blue-200 dark:border-blue-900">
-                <p className="text-sm text-muted-foreground">Total Files</p>
-                <p className="text-2xl font-bold text-blue-700 dark:text-blue-400">{files.length}</p>
-              </div>
-              <div className="bg-green-100 dark:bg-green-950/30 p-4 rounded-lg border border-green-200 dark:border-green-900">
-                <p className="text-sm text-muted-foreground">Processed Files</p>
-                <p className="text-2xl font-bold text-green-700 dark:text-green-400">
-                  {files.filter((f) => f.isProcessed).length}
-                </p>
-              </div>
-              <div className="bg-orange-100 dark:bg-orange-950/30 p-4 rounded-lg border border-orange-200 dark:border-orange-900">
-                <p className="text-sm text-muted-foreground">Total Chunks</p>
-                <p className="text-2xl font-bold text-orange-700 dark:text-orange-400">{totalChunks.toLocaleString()}</p>
-              </div>
-              <div className="bg-purple-100 dark:bg-purple-950/30 p-4 rounded-lg border border-purple-200 dark:border-purple-900">
-                <p className="text-sm text-muted-foreground">Total Size</p>
-                <p className="text-2xl font-bold text-purple-700 dark:text-purple-400">
-                  {(
-                    files.reduce((sum, f) => sum + f.size, 0) /
-                    (1024 * 1024)
-                  ).toFixed(1)}{' '}
-                  MB
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <ModelConfig
-            currentModel={modelInfo}
-            onModelChange={handleModelChange}
-          />
+        <TabsContent value="visualization">
+          <DocumentVisualization files={files} />
         </TabsContent>
       </Tabs>
 

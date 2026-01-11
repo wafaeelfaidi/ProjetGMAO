@@ -1,0 +1,12 @@
+@echo off
+REM Test Supabase migration
+cd apps\web
+
+echo Loading environment variables...
+set NEXT_PUBLIC_SUPABASE_URL=https://zwebmnlkgimgqtsutcbm.supabase.co
+set SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImthaW5hcXBnbnBtcWRsa2lyY2x0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MDUyNzY3MSwiZXhwIjoyMDc2MTAzNjcxfQ.r3ToVJqxEqfbZrZkxu7v2Ro91d8FgZEMM9BvbwQfYLU
+
+echo Running migration verification...
+npx tsx scripts\verify-migration.ts
+
+pause

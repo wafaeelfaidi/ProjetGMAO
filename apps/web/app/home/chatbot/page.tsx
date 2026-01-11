@@ -11,9 +11,10 @@ import { ChatbotPanel } from './_components/chatbot-panel';
 export default function ChatbotPage() {
   const fileService = useSupabaseFileService();
   const [files, setFiles] = useState<FileMetadata[]>([]);
+  const [isReady, setIsReady] = useState(false);
   const [embeddingModelInfo, setEmbeddingModelInfo] = useState({
-    type: 'simple',
-    dimension: 384,
+    type: 'cohere',
+    dimension: 1536,
   });
 
   // Initialize IndexedDB on mount and set embedding model
@@ -44,6 +45,8 @@ export default function ChatbotPage() {
         type: embeddingService.getModelInfo().type,
         dimension: embeddingService.getModelInfo().dimension,
       });
+      
+      setIsReady(true);
     } catch (error) {
       console.error('Failed to initialize:', error);
       alert('Failed to initialize. Please refresh the page.');
@@ -61,6 +64,10 @@ export default function ChatbotPage() {
 
   const handleSearch = useCallback(
     async (query: string, fileId?: string, topK = 5) => {
+      if (!isReady) {
+        console.warn('Search called before initialization completed');
+        return [];
+      }
       try {
         const results = await embeddingService.search(query, fileId, topK);
         return results;
@@ -69,7 +76,7 @@ export default function ChatbotPage() {
         throw error;
       }
     },
-    [],
+    [isReady],
   );
 
   return (

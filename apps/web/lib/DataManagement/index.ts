@@ -10,6 +10,22 @@ export type {
   StoredFile,
 } from './indexeddb.service';
 
+// Supabase service
+export { SupabaseFileService } from './supabase-file.service';
+export { useSupabaseFileService } from './use-supabase-file-service';
+
+// RAG service
+export { createRagService, RagService } from './rag.service';
+export type { RagContext, RagOptions } from './rag.service';
+
+// Document processor
+export { documentProcessor, DocumentProcessor } from './processors/document-processor.service';
+export type { 
+  DocumentType, 
+  ProcessingConfig, 
+  ProcessedDocument 
+} from './processors/document-processor.service';
+
 // Parsers
 export {
   chunkText,
@@ -29,3 +45,4 @@ export {
   type EmbeddingProgress,
   type ProgressCallback,
 } from './embeddings';
+

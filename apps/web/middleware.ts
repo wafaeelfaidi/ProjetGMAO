@@ -59,6 +59,7 @@ const checkRoleAccess = async (
   const operatorAllowedPaths = [
     '/home',
     '/home/csv-dashboard',
+    '/home/iot-dashboard',
     '/home/chatbot',
     '/home/maintenance',
     '/home/settings',

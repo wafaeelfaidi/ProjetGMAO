@@ -38,7 +38,7 @@ export interface EmbedModel {
  * - Sentence Transformers via API
  */
 export class SimpleEmbedModel implements EmbedModel {
-  private dimension: number = 384; // Common embedding dimension
+  private dimension: number = 1536; // Match OpenAI/pgvector expected dimension
   private vocabulary: Map<string, number> = new Map();
 
   getDimension(): number {
@@ -159,12 +159,13 @@ export class OpenAIEmbedModel implements EmbedModel {
 
 /**
  * Cohere Embeddings Model
+ * Uses embed-v4.0 with 1536 dimensions for compatibility with pgvector
  * Requires COHERE_API_KEY environment variable
  */
 export class CohereEmbedModel implements EmbedModel {
   private apiKey: string;
-  private model: string = 'embed-english-v3.0';
-  private dimension: number = 1024;
+  private model: string = 'embed-v4.0';
+  private dimension: number = 1536;
 
   constructor(apiKey?: string, model?: string) {
     this.apiKey =
@@ -181,7 +182,7 @@ export class CohereEmbedModel implements EmbedModel {
   }
 
   async embedText(text: string): Promise<number[]> {
-    const response = await fetch('https://api.cohere.ai/v1/embed', {
+    const response = await fetch('https://api.cohere.ai/v2/embed', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -191,19 +192,22 @@ export class CohereEmbedModel implements EmbedModel {
         texts: [text],
         model: this.model,
         input_type: 'search_document',
+        embedding_types: ['float'],
+        output_dimension: this.dimension,
       }),
     });
 
     if (!response.ok) {
-      throw new Error(`Cohere API error: ${response.statusText}`);
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(`Cohere API error: ${response.statusText} - ${errorData.message || ''}`);
     }
 
     const data = await response.json();
-    return data.embeddings[0];
+    return data.embeddings.float[0];
   }
 
   async embedBatch(texts: string[]): Promise<number[][]> {
-    const response = await fetch('https://api.cohere.ai/v1/embed', {
+    const response = await fetch('https://api.cohere.ai/v2/embed', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -213,15 +217,18 @@ export class CohereEmbedModel implements EmbedModel {
         texts: texts,
         model: this.model,
         input_type: 'search_document',
+        embedding_types: ['float'],
+        output_dimension: this.dimension,
       }),
     });
 
     if (!response.ok) {
-      throw new Error(`Cohere API error: ${response.statusText}`);
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(`Cohere API error: ${response.statusText} - ${errorData.message || ''}`);
     }
 
     const data = await response.json();
-    return data.embeddings;
+    return data.embeddings.float;
   }
 }
 

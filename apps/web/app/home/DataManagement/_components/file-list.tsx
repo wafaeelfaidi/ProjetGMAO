@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@kit/ui/button';
+import { Switch } from '@kit/ui/switch';
 import {
   Table,
   TableBody,
@@ -21,9 +22,11 @@ interface FileListProps {
     uploadDate: number;
     isProcessed: boolean;
     hasEmbeddings: boolean;
+    isPublic: boolean;
   }>;
   onDelete: (fileId: string) => void;
   onProcess: (fileId: string) => void;
+  onVisibilityToggle: (fileId: string, isPublic: boolean) => void;
   isProcessing?: Set<string>;
 }
 
@@ -31,6 +34,7 @@ export function FileList({
   files,
   onDelete,
   onProcess,
+  onVisibilityToggle,
   isProcessing = new Set(),
 }: FileListProps) {
   const sortedFiles = useMemo(() => {
@@ -75,6 +79,7 @@ export function FileList({
             <TableHead>Type</TableHead>
             <TableHead>Size</TableHead>
             <TableHead>Uploaded</TableHead>
+            <TableHead>Visibility</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
@@ -99,6 +104,20 @@ export function FileList({
                   {formatDate(file.uploadDate)}
                 </TableCell>
                 <TableCell>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={file.isPublic}
+                      onCheckedChange={(checked) => onVisibilityToggle(file.id, checked)}
+                      disabled={processing}
+                    />
+                    {file.isPublic ? (
+                      <span className="text-green-600 text-sm font-medium">📢 Public</span>
+                    ) : (
+                      <span className="text-gray-500 text-sm">🔒 Private</span>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell>
                   {processing ? (
                     <span className="text-gray-600 text-sm">Processing...</span>
                   ) : processed ? (
@@ -109,7 +128,7 @@ export function FileList({
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-2">
-                    {!processed && !processing && (
+                    {!processed && !processing && !file.type.includes('csv') && (
                       <Button
                         size="sm"
                         variant="outline"

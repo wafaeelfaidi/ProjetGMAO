@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { FileSpreadsheet, Loader2 } from 'lucide-react';
 
@@ -31,6 +31,7 @@ import {
   parseFrenchDate,
   parseFrenchNumber,
 } from '~/lib/csv-utils';
+import { parseCSVContent } from '~/lib/DataManagement/csv-parser';
 
 import { DataTable } from './_components/data-table';
 import { FilterControls } from './_components/filter-controls';
@@ -50,7 +51,18 @@ interface CSVData {
 
 interface CSVFile {
   name: string;
-  id?: string;
+  path: string;
+  publicUrl: string;
+  updated_at?: string;
+}
+
+interface StreamingStatus {
+  isConnected: boolean;
+  isStreaming: boolean;
+  currentRow: number;
+  totalRows: number;
+  progress: number;
+  fileName: string;
 }
 
 export default function CSVDashboardPage() {
@@ -58,106 +70,224 @@ export default function CSVDashboardPage() {
   const [selectedFile, setSelectedFile] = useState<string>('');
   const [csvData, setCSVData] = useState<CSVData | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingFiles, setLoadingFiles] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedColumn, setSelectedColumn] = useState<string>('');
   const [selectedValue, setSelectedValue] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [rangeMin, setRangeMin] = useState<number>(0);
   const [rangeMax, setRangeMax] = useState<number>(0);
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
+  const [streamingStatus, setStreamingStatus] = useState<StreamingStatus>({
+    isConnected: false,
+    isStreaming: false,
+    currentRow: 0,
+    totalRows: 0,
+    progress: 0,
+    fileName: '',
+  });
+  const [liveMode, setLiveMode] = useState<boolean>(true); // Live mode enabled by default
 
-  // Load list of CSV files from IndexedDB on mount
+  // Load list of CSV files from Supabase Storage on mount
   useEffect(() => {
     async function loadFiles() {
+      setLoadingFiles(true);
+      setError(null);
       try {
-        const { indexedDBService } = await import('~/lib/DataManagement/indexeddb.service');
-        await indexedDBService.initialize();
-        const allFiles = await indexedDBService.listFiles();
+        const response = await fetch('/api/csv-files');
+        const result = await response.json();
         
-        // Filter only CSV files
-        const csvFiles = allFiles.filter((f) => 
-          f.type.includes('csv') || f.name.toLowerCase().endsWith('.csv')
-        );
+        if (!result.success) {
+          setError(result.error || 'Error loading file list from Supabase');
+          console.error('Failed to load files:', result.error);
+          return;
+        }
         
-        setFiles(csvFiles.map((f) => ({ name: f.name, id: f.id })));
+        console.log('Files loaded:', result.files);
+        setFiles(result.files || []);
+        
+        if (result.files.length === 0) {
+          setError('No CSV files found. Please start the IoT streaming to generate data.');
+        }
       } catch (err) {
-        setError('Error loading file list from IndexedDB');
-        console.error(err);
+        const errorMsg = 'Error loading file list from Supabase. Make sure the API is running.';
+        setError(errorMsg);
+        console.error(errorMsg, err);
+      } finally {
+        setLoadingFiles(false);
       }
     }
 
     void loadFiles();
   }, []);
 
-  // Load CSV data when file is selected from IndexedDB
-  const loadCSVData = useCallback(async (filename: string) => {
+  // Load CSV data when file is selected from Supabase Storage
+  const loadCSVData = useCallback(async (filename: string, preserveFilters = false) => {
     if (!filename) return;
 
-    setLoading(true);
+    // Only show loading indicator for initial load, not refreshes
+    if (!preserveFilters) {
+      setLoading(true);
+    }
     setError(null);
-    setCSVData(null);
-    setSelectedColumn('');
-    setSelectedValue('all');
-    setSearchTerm('');
-    setRangeMin(0);
-    setRangeMax(0);
+    
+    // Only reset filters if not preserving them
+    if (!preserveFilters) {
+      setCSVData(null);
+      setSelectedColumn('');
+      setSelectedValue('all');
+      setSearchTerm('');
+      setRangeMin(0);
+      setRangeMax(0);
+    }
 
     try {
-      const { indexedDBService } = await import('~/lib/DataManagement/indexeddb.service');
-      await indexedDBService.initialize();
-      
       // Find the file by name
       const file = files.find((f) => f.name === filename);
-      if (!file?.id) {
-        setError('File not found in IndexedDB');
+      if (!file) {
+        setError('File not found in Supabase Storage');
         return;
       }
 
-      // Load file content from IndexedDB
-      const fileData = await indexedDBService.getFile(file.id!);
-      if (!fileData) {
-        setError('Failed to load file from IndexedDB');
-        return;
-      }
-
-      // Parse CSV content with encoding detection
-      // Try UTF-8 first, fallback to Windows-1252 (common for French CSVs)
-      let text: string;
-      try {
-        text = new TextDecoder('utf-8', { fatal: true }).decode(fileData.data);
-      } catch {
-        // If UTF-8 fails, try Windows-1252 (Latin-1 extended)
-        text = new TextDecoder('windows-1252').decode(fileData.data);
-      }
-      const lines = text.split('\n').filter((line) => line.trim());
+      // Download file content from Supabase Storage
+      const response = await fetch(`/api/csv-files/download?path=${encodeURIComponent(file.path)}`);
+      const result = await response.json();
       
-      if (lines.length === 0) {
+      if (!result.success) {
+        setError(result.error || 'Failed to load file from Supabase Storage');
+        return;
+      }
+
+      const content = result.content;
+      
+      if (!content || content.trim().length === 0) {
         setError('CSV file is empty');
         return;
       }
 
-      // Detect separator (comma or semicolon)
-      const firstLine = lines[0]!;
-      const separator: ';' | ',' = firstLine.includes(';') ? ';' : ',';
-
-      // Parse headers and rows
-      const headers = firstLine.split(separator).map((h) => h.trim());
-      const rows = lines.slice(1).map((line) => {
-        const values = line.split(separator).map((v) => v.trim());
-        const row: Record<string, string> = {};
-        headers.forEach((header, i) => {
-          row[header] = values[i] || '';
-        });
-        return row;
-      });
+      // Parse CSV content using the utility function
+      const { headers, rows, separator } = parseCSVContent(content);
 
       setCSVData({ headers, rows, separator, totalRows: rows.length });
+      setLastRefresh(new Date());
     } catch (err) {
-      setError('Error loading CSV data from IndexedDB');
+      setError('Error loading CSV data from Supabase Storage');
       console.error(err);
     } finally {
-      setLoading(false);
+      if (!preserveFilters) {
+        setLoading(false);
+      }
     }
   }, [files]);
+
+  // Refresh current file data (preserves filters)
+  const refreshData = useCallback(() => {
+    if (selectedFile) {
+      loadCSVData(selectedFile, true);
+    }
+  }, [selectedFile, loadCSVData]);
+
+  // WebSocket connection for live updates
+  useEffect(() => {
+    if (!liveMode) {
+      // Disconnect if live mode is disabled
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+        setStreamingStatus(prev => ({ ...prev, isConnected: false }));
+      }
+      return;
+    }
+
+    // Connect to WebSocket
+    const connectWebSocket = () => {
+      try {
+        const ws = new WebSocket('ws://localhost:8001/ws');
+        
+        ws.onopen = () => {
+          console.log('🔗 WebSocket connected');
+          setStreamingStatus(prev => ({ ...prev, isConnected: true }));
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            
+            if (data.type === 'connected') {
+              setStreamingStatus(prev => ({
+                ...prev,
+                isStreaming: data.streaming_active,
+                currentRow: data.current_row,
+                totalRows: data.total_rows,
+                fileName: data.file_name,
+              }));
+            } else if (data.type === 'data_update') {
+              setStreamingStatus(prev => ({
+                ...prev,
+                isStreaming: true,
+                currentRow: data.current_row,
+                totalRows: data.total_rows,
+                progress: data.progress,
+                fileName: data.file_name,
+              }));
+              
+              // Auto-refresh data if we're viewing the streaming file
+              if (selectedFile && data.file_name === selectedFile) {
+                loadCSVData(selectedFile, true);
+              }
+            } else if (data.type === 'streaming_complete') {
+              setStreamingStatus(prev => ({
+                ...prev,
+                isStreaming: false,
+                progress: 100,
+              }));
+              
+              // Final refresh
+              if (selectedFile && data.file_name === selectedFile) {
+                loadCSVData(selectedFile, true);
+              }
+            } else if (data.type === 'ping') {
+              ws.send('pong');
+            }
+          } catch (err) {
+            console.error('WebSocket message parse error:', err);
+          }
+        };
+
+        ws.onclose = (event) => {
+          if (event.code !== 1000) {
+            console.log('🔌 WebSocket disconnected (code:', event.code, ')');
+          }
+          setStreamingStatus(prev => ({ ...prev, isConnected: false }));
+          
+          // Reconnect after 3 seconds if live mode is still enabled
+          if (liveMode) {
+            setTimeout(connectWebSocket, 3000);
+          }
+        };
+
+        ws.onerror = () => {
+          // WebSocket errors are typically connection failures
+          // The onclose handler will manage reconnection
+          // No need to log since this usually means the server is not running
+        };
+
+        wsRef.current = ws;
+      } catch (err) {
+        console.error('WebSocket connection error:', err);
+      }
+    };
+
+    connectWebSocket();
+
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+    };
+  }, [liveMode, selectedFile, loadCSVData]);
 
   // Handle file selection
   const handleFileSelect = useCallback(
@@ -424,33 +554,129 @@ export default function CSVDashboardPage() {
         <CardHeader>
           <CardTitle>Select CSV File</CardTitle>
           <CardDescription>
-            Choose a file from the /data folder to load and visualize
+            Choose a file from Supabase Storage to load and visualize
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
             <Label htmlFor="file-select">Available Files</Label>
-            <Select value={selectedFile} onValueChange={handleFileSelect}>
-              <SelectTrigger id="file-select">
-                <SelectValue placeholder="Choose a CSV file..." />
-              </SelectTrigger>
-              <SelectContent>
-                {files.map((file) => (
-                  <SelectItem key={file.name} value={file.name}>
-                    <div className="flex items-center gap-2">
-                      <FileSpreadsheet className="h-4 w-4" />
-                      {file.name}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {loadingFiles ? (
+              <div className="flex items-center gap-2 p-3 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Loading files from Supabase...</span>
+              </div>
+            ) : files.length === 0 ? (
+              <div className="rounded-lg border border-dashed p-4">
+                <p className="text-muted-foreground text-sm">
+                  No CSV files found in storage.
+                </p>
+                <p className="text-muted-foreground mt-1 text-xs">
+                  Start the IoT streaming server to generate data, or visit the{' '}
+                  <a href="/home/iot-dashboard" className="text-primary hover:underline">
+                    IoT Dashboard
+                  </a>
+                </p>
+              </div>
+            ) : (
+              <Select value={selectedFile} onValueChange={handleFileSelect}>
+                <SelectTrigger id="file-select">
+                  <SelectValue placeholder="Choose a CSV file..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {files
+                    .filter((file) => file.name && file.name.trim() !== '' && file.name.toLowerCase().endsWith('.csv'))
+                    .map((file) => (
+                      <SelectItem key={file.name} value={file.name}>
+                        <div className="flex items-center gap-2">
+                          <FileSpreadsheet className="h-4 w-4" />
+                          {file.name}
+                        </div>
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
+
+          {/* Auto-refresh controls */}
+          {selectedFile && (
+            <div className="mt-4 space-y-3">
+              {/* Live Mode Toggle */}
+              <div className="flex flex-wrap items-center gap-4 rounded-lg border border-green-200 bg-green-50 p-3 dark:border-green-900 dark:bg-green-950">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="live-mode"
+                    checked={liveMode}
+                    onChange={(e) => setLiveMode(e.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                  <Label htmlFor="live-mode" className="text-sm font-medium">
+                    🔴 Live Mode (Real-time updates)
+                  </Label>
+                </div>
+
+                {liveMode && (
+                  <>
+                    <Badge variant={streamingStatus.isConnected ? "default" : "destructive"}>
+                      {streamingStatus.isConnected ? '🟢 Connected' : '🔴 Disconnected'}
+                    </Badge>
+                    
+                    {streamingStatus.isStreaming ? (
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="animate-pulse">
+                          Streaming: {streamingStatus.progress.toFixed(1)}%
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          ({streamingStatus.currentRow}/{streamingStatus.totalRows} rows)
+                        </span>
+                        <button
+                          onClick={async () => {
+                            try {
+                              await fetch('http://localhost:8001/stream/stop', { method: 'POST' });
+                            } catch (err) {
+                              console.error('Failed to stop streaming:', err);
+                            }
+                          }}
+                          className="ml-2 rounded bg-red-500 px-2 py-1 text-xs text-white hover:bg-red-600"
+                        >
+                          Stop
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={async () => {
+                          try {
+                            await fetch('http://localhost:8001/stream/start', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ chunk_size: 50, interval_seconds: 5 }),
+                            });
+                          } catch (err) {
+                            console.error('Failed to start streaming:', err);
+                          }
+                        }}
+                        className="rounded bg-green-500 px-3 py-1 text-xs text-white hover:bg-green-600"
+                      >
+                        ▶ Start Streaming
+                      </button>
+                    )}
+
+                    {lastRefresh && (
+                      <span className="text-muted-foreground text-xs ml-auto">
+                        Last updated: {lastRefresh.toLocaleTimeString()}
+                      </span>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {/* Loading State */}
-      {loading && (
+      {/* Loading State - only show for initial load, not live updates */}
+      {loading && !liveMode && (
         <Card>
           <CardContent className="flex items-center justify-center py-12">
             <div className="flex flex-col items-center gap-3">

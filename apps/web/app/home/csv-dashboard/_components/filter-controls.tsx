@@ -97,11 +97,13 @@ export function FilterControls({
               <SelectValue placeholder="Choose column..." />
             </SelectTrigger>
             <SelectContent>
-              {columns.map((column) => (
-                <SelectItem key={column} value={column}>
-                  {column}
-                </SelectItem>
-              ))}
+              {columns
+                .filter((column) => column && column.trim() !== '')
+                .map((column) => (
+                  <SelectItem key={column} value={column}>
+                    {column}
+                  </SelectItem>
+                ))}
             </SelectContent>
           </Select>
         </div>
@@ -209,11 +211,13 @@ export function FilterControls({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Values</SelectItem>
-                  {uniqueValues.map((value) => (
-                    <SelectItem key={value} value={value}>
-                      {value}
-                    </SelectItem>
-                  ))}
+                  {uniqueValues
+                    .filter((value) => value && value.trim() !== '')
+                    .map((value) => (
+                      <SelectItem key={value} value={value}>
+                        {value}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>

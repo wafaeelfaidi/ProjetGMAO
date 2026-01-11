@@ -4,8 +4,8 @@
  */
 
 import type { Embedding } from '../indexeddb.service';
-import { indexedDBService } from '../indexeddb.service';
 import { chunkText, cleanText, extractText } from '../parsers';
+import { documentProcessor } from '../processors/document-processor.service';
 import type { EmbedModel } from './embed-model.interface';
 import { createEmbedModel } from './embed-model.interface';
 
@@ -30,7 +30,7 @@ export type ProgressCallback = (progress: EmbeddingProgress) => void;
 export class EmbeddingService {
   private model: EmbedModel;
   private config: Required<EmbeddingConfig>;
-  private storage: any; // Can be IndexedDB or Supabase service
+  private storage: any; // Storage backend (IndexedDB or Supabase)
 
   private apiKey?: string;
 
@@ -43,17 +43,21 @@ export class EmbeddingService {
     };
     this.apiKey = config.apiKey;
     this.model = createEmbedModel(this.config.modelType, this.apiKey);
-    // Initialize with IndexedDB for backward compatibility
-    this.storage = indexedDBService;
+    // Storage must be set via setStorage() before use
+    this.storage = null;
   }
 
   /**
-   * Process a file and generate embeddings
+   * Process a file and generate embeddings using document-specific processing
    */
   async processFile(
     fileId: string,
     onProgress?: ProgressCallback,
   ): Promise<void> {
+    if (!this.storage) {
+      throw new Error('Storage backend not initialized. Call setStorage() first.');
+    }
+
     try {
       // Stage 1: Extract text from file
       onProgress?.({
@@ -67,36 +71,37 @@ export class EmbeddingService {
         throw new Error('File not found');
       }
 
-      // Skip CSV files
+      // Skip CSV files for embedding (they need different handling)
       if (file.type.includes('csv')) {
         throw new Error('CSV files are not processed for embeddings');
       }
 
-      const parseResult = await extractText(
+      // Use document processor for intelligent processing based on file type
+      const processedDoc = await documentProcessor.processDocument(
         file.data,
-        file.type,
         file.name,
+        file.type,
       );
 
-      // Update file metadata with text stats
+      // Update file metadata with processing info
       await this.storage.updateFileMetadata(fileId, {
         isProcessed: true,
         hasEmbeddings: false,
+        metadata: {
+          documentType: processedDoc.documentType,
+          processingStrategy: processedDoc.metadata.processingStrategy,
+          ...processedDoc.metadata,
+        },
       });
 
-      // Stage 2: Clean and chunk text
+      // Stage 2: Chunking already done by document processor
       onProgress?.({
         stage: 'chunking',
         progress: 30,
-        message: 'Splitting text into chunks...',
+        message: `Processing ${processedDoc.chunks.length} chunks...`,
       });
 
-      const cleanedText = cleanText(parseResult.text);
-      const chunks = chunkText(
-        cleanedText,
-        this.config.chunkSize,
-        this.config.overlap,
-      );
+      const chunks = processedDoc.chunks;
 
       // Stage 3: Generate embeddings
       onProgress?.({
@@ -107,18 +112,29 @@ export class EmbeddingService {
 
       const embeddings: Embedding[] = [];
       const batchSize = 10; // Process in batches to show progress
+      const targetDimension = 1536; // Database expects 1536 dimensions
 
       for (let i = 0; i < chunks.length; i += batchSize) {
         const batch = chunks.slice(i, i + batchSize);
         const vectors = await this.model.embedBatch(batch);
 
         vectors.forEach((vector, idx) => {
+          // Pad or truncate vector to match database dimension
+          let normalizedVector = vector;
+          if (vector.length < targetDimension) {
+            // Pad with zeros
+            normalizedVector = [...vector, ...new Array(targetDimension - vector.length).fill(0)];
+          } else if (vector.length > targetDimension) {
+            // Truncate (shouldn't happen with current models)
+            normalizedVector = vector.slice(0, targetDimension);
+          }
+          
           embeddings.push({
             id: crypto.randomUUID(),
             fileId,
             chunkIndex: i + idx,
             text: batch[idx] || '',
-            vector,
+            vector: normalizedVector,
             createdAt: Date.now(),
           });
         });
@@ -145,7 +161,7 @@ export class EmbeddingService {
       onProgress?.({
         stage: 'complete',
         progress: 100,
-        message: `Successfully processed ${chunks.length} chunks`,
+        message: `Successfully processed ${chunks.length} chunks using ${processedDoc.metadata.processingStrategy}`,
       });
     } catch (error) {
       throw new Error(`Failed to process file: ${error}`);
@@ -183,7 +199,8 @@ export class EmbeddingService {
   }
 
   /**
-   * Search for similar text chunks using cosine similarity
+   * Search for similar text chunks using vector similarity
+   * Now supports both IndexedDB (cosine similarity) and Supabase (pgvector)
    */
   async search(
     query: string,
@@ -197,11 +214,32 @@ export class EmbeddingService {
       similarity: number;
     }>
   > {
+    if (!this.storage) {
+      throw new Error('Storage backend not initialized. Call setStorage() first.');
+    }
+
     try {
       // Generate query embedding
       const queryVector = await this.model.embedText(query);
 
-      // Get embeddings for specific file or all files
+      // Check if storage supports vector search (Supabase)
+      if (typeof this.storage.vectorSearch === 'function') {
+        // Use Supabase's pgvector search
+        const results = await this.storage.vectorSearch(queryVector, {
+          fileId,
+          topK,
+          threshold: 0.5, // Lower threshold for more results
+        });
+        
+        return results.map((r: any) => ({
+          fileId: r.fileId,
+          chunkIndex: r.chunkIndex,
+          text: r.text,
+          similarity: r.similarity,
+        }));
+      }
+
+      // Fallback to client-side cosine similarity search (IndexedDB)
       let embeddings: Embedding[] = [];
       
       if (fileId) {
@@ -230,6 +268,27 @@ export class EmbeddingService {
     } catch (error) {
       throw new Error(`Search failed: ${error}`);
     }
+  }
+
+  /**
+   * Get RAG context for a query (Supabase only)
+   */
+  async getRagContext(
+    query: string,
+    maxChunks: number = 5,
+    minSimilarity: number = 0.7
+  ): Promise<Array<{
+    fileName: string;
+    chunkText: string;
+    similarity: number;
+    sourceInfo: any;
+  }>> {
+    if (typeof this.storage.getRagContext !== 'function') {
+      throw new Error('RAG context retrieval is only supported with Supabase storage');
+    }
+
+    const queryVector = await this.model.embedText(query);
+    return this.storage.getRagContext(queryVector, maxChunks, minSimilarity);
   }
 
   /**

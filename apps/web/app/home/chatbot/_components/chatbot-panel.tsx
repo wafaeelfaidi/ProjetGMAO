@@ -56,8 +56,8 @@ export function ChatbotPanel({ files, onSearch, currentEmbeddingModel }: Chatbot
   const [selectedFile, setSelectedFile] = useState<string>('all');
   const [topK, setTopK] = useState<number>(3);
   
-  // LLM Configuration
-  const [selectedLLM, setSelectedLLM] = useState<string>('openai');
+  // LLM Configuration - Default to Cohere
+  const [selectedLLM, setSelectedLLM] = useState<string>('cohere');
   const [apiKey, setApiKey] = useState('');
   const [showApiKey, setShowApiKey] = useState(false);
   const [savedApiKeys, setSavedApiKeys] = useState<Record<string, boolean>>({});

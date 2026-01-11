@@ -108,9 +108,14 @@ export function SearchPanel({
 
       {!isSearching && results.length > 0 && (
         <div className="space-y-3 mt-6">
-          <h3 className="font-medium text-lg">
-            Search Results ({results.length})
-          </h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-medium text-lg">
+              Search Results ({results.length})
+            </h3>
+            <span className="text-sm text-gray-500">
+              Found in {new Set(results.map(r => r.fileId)).size} document(s)
+            </span>
+          </div>
           {results.map((result, idx) => (
             <div
               key={`${result.fileId}-${result.chunkIndex}`}
@@ -121,15 +126,25 @@ export function SearchPanel({
                   <span className="text-xs font-medium bg-blue-100 text-blue-700 px-2 py-1 rounded">
                     #{idx + 1}
                   </span>
-                  <span className="text-sm font-medium">
-                    {getFileName(result.fileId)}
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium">
+                      {getFileName(result.fileId)}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      Chunk {result.chunkIndex + 1}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex flex-col items-end">
+                  <span className="text-sm font-semibold text-green-600">
+                    {(result.similarity * 100).toFixed(1)}% match
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    Relevance score
                   </span>
                 </div>
-                <span className="text-sm text-gray-600">
-                  {(result.similarity * 100).toFixed(1)}% match
-                </span>
               </div>
-              <p className="text-sm text-gray-700 leading-relaxed">
+              <p className="text-sm text-gray-700 leading-relaxed line-clamp-4">
                 {result.text}
               </p>
             </div>
