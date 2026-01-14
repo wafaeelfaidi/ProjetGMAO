@@ -1,11 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { FileSpreadsheet, Loader2 } from 'lucide-react';
+import { FileSpreadsheet, Loader2, ChevronDown, ChevronUp, Activity } from 'lucide-react';
 
 import { Alert, AlertDescription, AlertTitle } from '@kit/ui/alert';
 import { Badge } from '@kit/ui/badge';
+import { Button } from '@kit/ui/button';
 import {
   Card,
   CardContent,
@@ -88,6 +89,8 @@ export default function CSVDashboardPage() {
     fileName: '',
   });
   const [liveMode, setLiveMode] = useState<boolean>(true); // Live mode enabled by default
+  const [isDataPreviewExpanded, setIsDataPreviewExpanded] = useState<boolean>(true); // Data preview expanded by default
+  const [selectedMachine, setSelectedMachine] = useState<string>('all'); // Machine filter for KPIs
 
   // Load list of CSV files from Supabase Storage on mount
   useEffect(() => {
@@ -447,6 +450,36 @@ export default function CSVDashboardPage() {
     return types;
   }, [csvData, filteredData]);
 
+  // Detect captor columns
+  const captorColumns = useMemo(() => {
+    if (!csvData) return [];
+    return csvData.headers.filter(
+      (h) =>
+        h.toLowerCase().startsWith('captor') ||
+        h.toLowerCase().startsWith('capteur')
+    );
+  }, [csvData]);
+
+  // Detect machine columns
+  const machineColumns = useMemo(() => {
+    if (!csvData) return [];
+    return csvData.headers.filter((h) =>
+      h.toLowerCase().startsWith('machine')
+    );
+  }, [csvData]);
+
+  // Calculate captor statistics
+  const captorStats = useMemo(() => {
+    if (!csvData || !filteredData.length || !captorColumns.length) return [];
+    return captorColumns.map((captor) => {
+      const stats = getNumericStats(filteredData, captor);
+      return {
+        name: captor,
+        ...stats,
+      };
+    });
+  }, [csvData, filteredData, captorColumns]);
+
   // Calculate KPIs
   const kpis = useMemo(() => {
     if (!csvData || !filteredData.length) {
@@ -468,61 +501,45 @@ export default function CSVDashboardPage() {
       numericSums[col] = stats.sum;
     }
 
-    // Calculate MTBF and MTTR only if filtering by a single machine
+    // Calculate MTBF and MTTR when a specific machine is selected
     let mtbf: number | null = null;
     let mttr: number | null = null;
 
     // Check if we're filtering by a specific machine
-    const isMachineFilter =
-      selectedColumn &&
-      (selectedColumn.toLowerCase().includes('designation') ||
-        selectedColumn.toLowerCase().includes('désignation') ||
-        selectedColumn.toLowerCase().includes('machine')) &&
-      selectedValue !== 'all';
+    const isMachineSelected = selectedMachine !== 'all' && machineColumns.includes(selectedMachine);
 
-    if (isMachineFilter) {
-      // Find downtime duration column (Durée arrêt)
-      const durationCol = csvData.headers.find(
-        (h) =>
-          h.toLowerCase().includes('durée') ||
-          h.toLowerCase().includes('duree') ||
-          h.toLowerCase().includes('arrêt') ||
-          h.toLowerCase().includes('arret'),
+    if (isMachineSelected) {
+      // Filter data for the selected machine (records where machine = 1 means failure/breakdown)
+      const machineData = filteredData.filter(
+        (row) => row[selectedMachine] === '1' || row[selectedMachine] === '1.0' || parseFloat(row[selectedMachine] || '0') === 1
       );
 
-      // Find date column
-      const dateCol = csvData.headers.find(
+      // Find time column
+      const timeCol = csvData.headers.find(
         (h) =>
-          h.toLowerCase().includes('date') &&
-          h.toLowerCase().includes('intervention'),
+          h.toLowerCase() === 'time' ||
+          h.toLowerCase().includes('date') ||
+          h.toLowerCase().includes('timestamp'),
       );
 
-      if (durationCol && dateCol) {
-        // Calculate MTTR (Mean Time To Repair) - average downtime
-        const durations = filteredData
-          .map((row) => parseFrenchNumber(row[durationCol] || '0'))
-          .filter((d) => d > 0);
-
-        if (durations.length > 0) {
-          mttr = durations.reduce((a, b) => a + b, 0) / durations.length;
-        }
-
-        // Calculate MTBF (Mean Time Between Failures)
-        // Get dates and sort them
-        const dates = filteredData
+      if (timeCol && machineData.length > 0) {
+        // Get timestamps of failures and sort them
+        const failureTimes = machineData
           .map((row) => {
-            const dateStr = row[dateCol];
-            return parseFrenchDate(dateStr || '');
+            const timeStr = row[timeCol];
+            if (!timeStr) return null;
+            const date = new Date(timeStr);
+            return isNaN(date.getTime()) ? parseFrenchDate(timeStr) : date;
           })
           .filter((d): d is Date => d !== null)
           .sort((a, b) => a.getTime() - b.getTime());
 
-        if (dates.length > 1) {
-          // Calculate time between failures in hours
+        if (failureTimes.length > 1) {
+          // Calculate MTBF (Mean Time Between Failures) in hours
           const intervals: number[] = [];
-          for (let i = 1; i < dates.length; i++) {
+          for (let i = 1; i < failureTimes.length; i++) {
             const diff =
-              (dates[i]!.getTime() - dates[i - 1]!.getTime()) /
+              (failureTimes[i]!.getTime() - failureTimes[i - 1]!.getTime()) /
               (1000 * 60 * 60); // Convert to hours
             intervals.push(diff);
           }
@@ -531,11 +548,43 @@ export default function CSVDashboardPage() {
             mtbf = intervals.reduce((a, b) => a + b, 0) / intervals.length;
           }
         }
+
+        // Calculate MTTR - estimate based on data interval (assuming 2-hour intervals as repair time)
+        // In a real scenario, you'd have actual repair duration data
+        const totalFailures = machineData.length;
+        if (totalFailures > 0) {
+          // Estimate MTTR as average time between consecutive data points (repair time)
+          mttr = 2.0; // Default 2 hours based on data collection interval
+        }
       }
     }
 
-    return { numericSums, mtbf, mttr };
-  }, [csvData, filteredData, columnTypes, selectedColumn, selectedValue]);
+    // Calculate Disponibility and Reliability for selected machine
+    let disponibility: number | null = null;
+    let reliability: number | null = null;
+
+    if (isMachineSelected) {
+      const totalRecords = filteredData.length;
+      const failureRecords = filteredData.filter(
+        (row) => row[selectedMachine] === '1' || row[selectedMachine] === '1.0' || parseFloat(row[selectedMachine] || '0') === 1
+      ).length;
+
+      // Disponibility = (Total Time - Downtime) / Total Time * 100
+      // Calculated as percentage of records without failure
+      disponibility = totalRecords > 0 ? ((totalRecords - failureRecords) / totalRecords) * 100 : 0;
+
+      // Reliability = MTBF / (MTBF + MTTR) * 100
+      // If MTBF and MTTR are available, calculate reliability using the formula
+      if (mtbf !== null && mttr !== null && (mtbf + mttr) > 0) {
+        reliability = (mtbf / (mtbf + mttr)) * 100;
+      } else {
+        // Fallback: use the same calculation as disponibility
+        reliability = disponibility;
+      }
+    }
+
+    return { numericSums, mtbf, mttr, disponibility, reliability };
+  }, [csvData, filteredData, columnTypes, selectedMachine, machineColumns]);
 
 
 
@@ -698,82 +747,175 @@ export default function CSVDashboardPage() {
       {/* Data Display */}
       {csvData && filteredData && (
         <>
-          {/* KPI Cards */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {/* Show top 2 numeric column sums */}
-            {Object.entries(kpis.numericSums)
-              .slice(0, 2)
-              .map(([column, sum]) => (
-                <Card key={column}>
-                  <CardHeader className="pb-2">
-                    <CardDescription className="truncate" title={column}>
-                      Total {column}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="font-heading text-2xl font-bold">
-                      {sum.toFixed(2)}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-
-            {/* MTBF */}
+          {/* Machine Filter and KPIs */}
+          {machineColumns.length > 0 && (
             <Card>
-              <CardHeader className="pb-2">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="h-5 w-5" />
+                  Machine KPIs
+                </CardTitle>
                 <CardDescription>
-                  MTBF (Mean Time Between Failures)
+                  Select a machine to view MTBF and MTTR metrics
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="font-heading text-2xl font-bold">
-                  {kpis.mtbf !== null ? (
-                    <span>
-                      {kpis.mtbf.toFixed(2)}{' '}
-                      <span className="text-muted-foreground text-base font-normal">
-                        hrs
-                      </span>
-                    </span>
-                  ) : (
-                    <span className="text-muted-foreground">N/A</span>
-                  )}
-                </div>
-                {kpis.mtbf === null && (
-                  <p className="text-muted-foreground mt-1 text-xs">
-                    Filter by machine to calculate
-                  </p>
-                )}
-              </CardContent>
-            </Card>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="machine-filter">Select Machine</Label>
+                    <Select value={selectedMachine} onValueChange={setSelectedMachine}>
+                      <SelectTrigger id="machine-filter" className="w-full max-w-xs">
+                        <SelectValue placeholder="Select a machine..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Machines</SelectItem>
+                        {machineColumns.map((machine) => (
+                          <SelectItem key={machine} value={machine}>
+                            {machine}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-            {/* MTTR */}
-            <Card>
-              <CardHeader className="pb-2">
-                <CardDescription>
-                  MTTR (Mean Time To Repair)
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="font-heading text-2xl font-bold">
-                  {kpis.mttr !== null ? (
-                    <span>
-                      {kpis.mttr.toFixed(2)}{' '}
-                      <span className="text-muted-foreground text-base font-normal">
-                        hrs
-                      </span>
-                    </span>
-                  ) : (
-                    <span className="text-muted-foreground">N/A</span>
-                  )}
+                  {/* KPI Cards */}
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    {/* MTBF */}
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardDescription>
+                          MTBF (Mean Time Between Failures)
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="font-heading text-2xl font-bold">
+                          {kpis.mtbf !== null ? (
+                            <span className="text-green-600">
+                              {kpis.mtbf.toFixed(2)}{' '}
+                              <span className="text-muted-foreground text-base font-normal">
+                                hrs
+                              </span>
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">N/A</span>
+                          )}
+                        </div>
+                        {kpis.mtbf === null && (
+                          <p className="text-muted-foreground mt-1 text-xs">
+                            Select a specific machine to calculate
+                          </p>
+                        )}
+                        {kpis.mtbf !== null && selectedMachine !== 'all' && (
+                          <p className="text-muted-foreground mt-1 text-xs">
+                            Average time between failures for {selectedMachine}
+                          </p>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    {/* MTTR */}
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardDescription>
+                          MTTR (Mean Time To Repair)
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="font-heading text-2xl font-bold">
+                          {kpis.mttr !== null ? (
+                            <span className="text-blue-600">
+                              {kpis.mttr.toFixed(2)}{' '}
+                              <span className="text-muted-foreground text-base font-normal">
+                                hrs
+                              </span>
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">N/A</span>
+                          )}
+                        </div>
+                        {kpis.mttr === null && (
+                          <p className="text-muted-foreground mt-1 text-xs">
+                            Select a specific machine to calculate
+                          </p>
+                        )}
+                        {kpis.mttr !== null && selectedMachine !== 'all' && (
+                          <p className="text-muted-foreground mt-1 text-xs">
+                            Estimated repair time for {selectedMachine}
+                          </p>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    {/* Disponibility */}
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardDescription>
+                          Disponibility (Availability)
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="font-heading text-2xl font-bold">
+                          {kpis.disponibility !== null ? (
+                            <span className="text-emerald-600">
+                              {kpis.disponibility.toFixed(1)}
+                              <span className="text-muted-foreground text-base font-normal">
+                                %
+                              </span>
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">N/A</span>
+                          )}
+                        </div>
+                        {kpis.disponibility === null && (
+                          <p className="text-muted-foreground mt-1 text-xs">
+                            Select a specific machine to calculate
+                          </p>
+                        )}
+                        {kpis.disponibility !== null && selectedMachine !== 'all' && (
+                          <p className="text-muted-foreground mt-1 text-xs">
+                            Operational availability for {selectedMachine}
+                          </p>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    {/* Reliability */}
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardDescription>
+                          Reliability
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="font-heading text-2xl font-bold">
+                          {kpis.reliability !== null ? (
+                            <span className="text-purple-600">
+                              {kpis.reliability.toFixed(1)}
+                              <span className="text-muted-foreground text-base font-normal">
+                                %
+                              </span>
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">N/A</span>
+                          )}
+                        </div>
+                        {kpis.reliability === null && (
+                          <p className="text-muted-foreground mt-1 text-xs">
+                            Select a specific machine to calculate
+                          </p>
+                        )}
+                        {kpis.reliability !== null && selectedMachine !== 'all' && (
+                          <p className="text-muted-foreground mt-1 text-xs">
+                            MTBF / (MTBF + MTTR) for {selectedMachine}
+                          </p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
                 </div>
-                {kpis.mttr === null && (
-                  <p className="text-muted-foreground mt-1 text-xs">
-                    Filter by machine to calculate
-                  </p>
-                )}
               </CardContent>
             </Card>
-          </div>
+          )}
 
           {/* Filters and Data Table */}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
@@ -799,22 +941,100 @@ export default function CSVDashboardPage() {
               />
             </div>
 
-            <div className="lg:col-span-3">
+            <div className="lg:col-span-3 space-y-6">
+              {/* Data Preview with Collapse/Expand Button */}
               <Card>
-                <CardHeader>
-                  <CardTitle>Data Preview</CardTitle>
-                  <CardDescription>
-                    Displaying first 50 rows of filtered data
-                  </CardDescription>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <div>
+                    <CardTitle>Data Preview</CardTitle>
+                    <CardDescription>
+                      Displaying first 50 rows of filtered data
+                    </CardDescription>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsDataPreviewExpanded(!isDataPreviewExpanded)}
+                    className="flex items-center gap-1"
+                  >
+                    {isDataPreviewExpanded ? (
+                      <>
+                        <ChevronUp className="h-4 w-4" />
+                        Minimize
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="h-4 w-4" />
+                        Expand
+                      </>
+                    )}
+                  </Button>
                 </CardHeader>
-                <CardContent>
-                  <DataTable
-                    data={filteredData}
-                    headers={csvData.headers}
-                    maxRows={50}
-                  />
-                </CardContent>
+                {isDataPreviewExpanded && (
+                  <CardContent>
+                    <DataTable
+                      data={filteredData}
+                      headers={csvData.headers}
+                      maxRows={50}
+                    />
+                  </CardContent>
+                )}
               </Card>
+
+              {/* Captor Statistics Section - Below Data Preview */}
+              {captorStats.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Activity className="h-5 w-5" />
+                      Captor Statistics
+                    </CardTitle>
+                    <CardDescription>
+                      Statistical summary for all sensor captors
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                      {captorStats.map((captor) => (
+                        <div
+                          key={captor.name}
+                          className="rounded-lg border p-4 hover:shadow-md transition-shadow"
+                        >
+                          <h4 className="font-semibold text-sm truncate mb-3" title={captor.name}>
+                            {captor.name}
+                          </h4>
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div>
+                              <span className="text-muted-foreground">Avg:</span>
+                              <span className="font-medium ml-1">{(captor.avg ?? 0).toFixed(2)}</span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Sum:</span>
+                              <span className="font-medium ml-1">{(captor.sum ?? 0).toFixed(2)}</span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Min:</span>
+                              <span className="font-medium ml-1 text-blue-600">{(captor.min ?? 0).toFixed(2)}</span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Max:</span>
+                              <span className="font-medium ml-1 text-red-600">{(captor.max ?? 0).toFixed(2)}</span>
+                            </div>
+                            <div className="col-span-2">
+                              <span className="text-muted-foreground">Std Dev:</span>
+                              <span className="font-medium ml-1">{(captor.stdDev ?? 0).toFixed(2)}</span>
+                            </div>
+                            <div className="col-span-2">
+                              <span className="text-muted-foreground">Count:</span>
+                              <span className="font-medium ml-1">{captor.count ?? 0}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           </div>
 

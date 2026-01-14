@@ -12,11 +12,14 @@ import {
   subMonths,
   startOfWeek,
   endOfWeek,
-  isToday
+  isToday,
+  isFuture,
+  isAfter,
+  startOfDay
 } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { cn } from '@kit/ui/utils';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, AlertTriangle, X, Clock, DollarSign, Wrench } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, AlertTriangle, X, Clock, DollarSign, Wrench, UserPlus, CheckCircle } from 'lucide-react';
 import { Button } from '@kit/ui/button';
 import { Badge } from '@kit/ui/badge';
 import {
@@ -32,6 +35,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@kit/ui/dialog';
+import { TaskDelegationModal } from './TaskDelegationModal';
+import { useTasksByDate, type MaintenanceTask } from '~/lib/maintenance-tasks-hooks';
 
 interface CalendarEvent {
   id: string;
@@ -61,16 +66,32 @@ interface MaintenanceCalendarProps {
   events: CalendarEvent[];
   onSelectEvent?: (event: CalendarEvent) => void;
   className?: string;
+  isAdmin?: boolean;
 }
 
 export function MaintenanceCalendar({ 
   events, 
   onSelectEvent,
-  className 
+  className,
+  isAdmin = false 
 }: MaintenanceCalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date('2025-03-29'));
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [delegationModalOpen, setDelegationModalOpen] = useState(false);
+  const [delegationDate, setDelegationDate] = useState<Date | null>(null);
+  const [delegationEvent, setDelegationEvent] = useState<CalendarEvent | null>(null);
+
+  // Get tasks for selected date to show delegation status
+  const selectedDateKey = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '';
+  const { data: tasksForDate } = useTasksByDate(selectedDateKey);
+
+  // Check if an event already has a delegated task
+  const getTaskForEvent = (event: CalendarEvent): MaintenanceTask | undefined => {
+    return tasksForDate?.find(
+      (task) => task.machine === event.machine && task.scheduled_date === format(new Date(event.date), 'yyyy-MM-dd')
+    );
+  };
 
   // Group events by date
   const eventsByDate = useMemo(() => {
@@ -420,6 +441,40 @@ export function MaintenanceCalendar({
                         )}
                       </div>
                     )}
+
+                    {/* Delegate button for admin on prediction events */}
+                    {isAdmin && event.event_type === 'prediction' && selectedDate && (
+                      <div className="mt-4 pt-4 border-t border-gray-300">
+                        {(() => {
+                          const existingTask = getTaskForEvent(event);
+                          if (existingTask) {
+                            return (
+                              <div className="flex items-center gap-2 text-green-600">
+                                <CheckCircle className="w-4 h-4" />
+                                <span className="text-sm">
+                                  Tâche déléguée - {existingTask.status === 'completed' ? 'Terminée' : existingTask.status === 'in_progress' ? 'En cours' : 'En attente'}
+                                </span>
+                              </div>
+                            );
+                          }
+                          return (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="w-full border-gray-400 hover:bg-gray-100"
+                              onClick={() => {
+                                setDelegationDate(selectedDate);
+                                setDelegationEvent(event);
+                                setDelegationModalOpen(true);
+                              }}
+                            >
+                              <UserPlus className="w-4 h-4 mr-2" />
+                              Déléguer cette tâche
+                            </Button>
+                          );
+                        })()}
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -434,6 +489,21 @@ export function MaintenanceCalendar({
         )}
       </DialogContent>
     </Dialog>
+
+    {/* Task Delegation Modal */}
+    {isAdmin && delegationDate && (
+      <TaskDelegationModal
+        isOpen={delegationModalOpen}
+        onClose={() => {
+          setDelegationModalOpen(false);
+          setDelegationDate(null);
+          setDelegationEvent(null);
+        }}
+        selectedDate={delegationDate}
+        events={selectedDateEvents.filter(e => e.event_type === 'prediction')}
+        preSelectedEvent={delegationEvent}
+      />
+    )}
     </>
   );
 }

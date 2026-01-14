@@ -54,31 +54,28 @@ export class SupabaseFileService {
     if (this.bucketInitialized) return;
 
     try {
-      // Try to check if bucket exists
-      const { data: buckets, error } = await this.client.storage.listBuckets();
+      // Try to list files in the bucket as a better verification method
+      const { error: listError } = await this.client.storage
+        .from(STORAGE_BUCKET)
+        .list('', { limit: 1 });
       
-      if (error) {
-        // Can't list buckets (might be RLS), but proceed anyway
-        console.warn('⚠️ Could not verify bucket existence:', error.message);
-        console.log('Proceeding anyway - file operations will fail if bucket is missing');
-        this.bucketInitialized = true;
-        return;
-      }
-
-      const bucketExists = buckets?.some(b => b.name === STORAGE_BUCKET);
-
-      if (bucketExists) {
-        console.log(`✅ Storage bucket '${STORAGE_BUCKET}' verified`);
+      if (listError) {
+        // If we get "Bucket not found" error, that's a real problem
+        if (listError.message?.includes('Bucket not found')) {
+          console.error(`❌ Storage bucket '${STORAGE_BUCKET}' does not exist!`);
+          console.error('Please create it in Supabase Dashboard or run CREATE_STORAGE_BUCKET.md SQL');
+        } else {
+          // Other errors (like empty bucket) are fine
+          console.log(`✅ Storage bucket '${STORAGE_BUCKET}' is accessible`);
+        }
       } else {
-        console.warn(`⚠️ Storage bucket '${STORAGE_BUCKET}' not found in list`);
-        console.log('Proceeding anyway - it may exist but not be listable');
+        console.log(`✅ Storage bucket '${STORAGE_BUCKET}' verified and accessible`);
       }
 
       this.bucketInitialized = true;
     } catch (error) {
       // If check fails, proceed anyway - actual operations will fail if bucket missing
-      console.warn('⚠️ Could not check bucket existence:', error);
-      console.log('Proceeding anyway - file operations will fail if bucket is missing');
+      console.warn('ℹ️ Could not verify bucket (may be permissions), proceeding anyway');
       this.bucketInitialized = true;
     }
   }
@@ -292,25 +289,55 @@ export class SupabaseFileService {
     }));
 
     // Insert embeddings
-    const { error } = await this.client
+    console.log(`📝 Attempting to insert ${embeddingsToInsert.length} embeddings for file ${embeddings[0]?.fileId}`);
+    const { data: insertData, error } = await this.client
       .from('file_embeddings')
-      .insert(embeddingsToInsert);
+      .insert(embeddingsToInsert)
+      .select();
 
     if (error) {
-      console.error('Error storing embeddings:', error);
+      console.error('❌ Error storing embeddings:', error);
+      console.error('Error details:', { code: error.code, message: error.message, details: error.details, hint: error.hint });
       throw new Error(`Failed to store embeddings: ${error.message}`);
     }
 
-    // Update file to mark as processed
+    console.log(`✅ Successfully inserted ${insertData?.length || 0} embeddings`);
+
+    // Verify embeddings were actually stored
     if (embeddings.length > 0 && embeddings[0]) {
       const fileId = embeddings[0].fileId;
-      await this.client
+      
+      // Check if embeddings can be read back
+      const { data: checkData, error: checkError } = await this.client
+        .from('file_embeddings')
+        .select('id, chunk_index, text')
+        .eq('file_id', fileId)
+        .limit(3);
+      
+      if (checkError) {
+        console.error('❌ Cannot read back embeddings (RLS issue?):', checkError);
+      } else {
+        console.log(`✅ Verification: ${checkData?.length || 0} embeddings readable from database`);
+        if (checkData && checkData.length > 0) {
+          console.log('Sample:', checkData[0].text.substring(0, 50) + '...');
+        }
+      }
+      
+      // Update file to mark as processed
+      console.log(`📋 Updating file ${fileId} to mark as processed`);
+      const { error: updateError } = await this.client
         .from('uploaded_files')
         .update({ 
           has_embeddings: true,
           is_processed: true 
         })
         .eq('id', fileId);
+
+      if (updateError) {
+        console.error('❌ Error updating file status:', updateError);
+      } else {
+        console.log(`✅ File ${fileId} marked as processed`);
+      }
     }
   }
 
@@ -408,11 +435,13 @@ export class SupabaseFileService {
     text: string;
     similarity: number;
   }>> {
-    const { fileId, topK = 5, threshold = 0.7 } = options;
+    const { fileId, topK = 5, threshold = 0.3 } = options;
 
     // Format query vector for pgvector
     const vectorString = `[${queryVector.join(',')}]`;
 
+    console.log(`🔍 Searching with threshold=${threshold}, topK=${topK}, fileId=${fileId || 'all'}`);
+    
     // Build RPC call to search function
     const { data, error } = await this.client.rpc('search_documents', {
       query_embedding: vectorString,
@@ -421,6 +450,11 @@ export class SupabaseFileService {
       filter_file_id: fileId || null,
       filter_user_id: null,
     });
+    
+    console.log(`📊 Search returned ${data?.length || 0} results`);
+    if (data && data.length > 0) {
+      console.log('Top result similarity:', data[0].similarity);
+    }
 
     if (error) {
       const errorMessage = error.message || error.code || JSON.stringify(error) || 'Unknown error';

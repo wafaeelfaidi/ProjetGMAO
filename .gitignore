@@ -5,7 +5,7 @@ apps\api\env2
 node_modules
 .pnp
 .pnp.js
-
+Model_benchmarking.ipynb
 # testing
 coverage
 

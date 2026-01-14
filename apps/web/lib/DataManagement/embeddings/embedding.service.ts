@@ -38,7 +38,7 @@ export class EmbeddingService {
     this.config = {
       chunkSize: config.chunkSize || 500,
       overlap: config.overlap || 50,
-      modelType: config.modelType || 'simple',
+      modelType: config.modelType || 'cohere',
       apiKey: config.apiKey ?? '',
     };
     this.apiKey = config.apiKey;
@@ -228,7 +228,7 @@ export class EmbeddingService {
         const results = await this.storage.vectorSearch(queryVector, {
           fileId,
           topK,
-          threshold: 0.5, // Lower threshold for more results
+          threshold: 0.3, // Lower threshold for more results
         });
         
         return results.map((r: any) => ({

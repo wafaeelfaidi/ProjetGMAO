@@ -10,7 +10,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@kit/ui/select';
-import { Bot, Send, Loader2, User, Settings } from 'lucide-react';
+import { Bot, Send, Loader2, User, Settings, ExternalLink } from 'lucide-react';
+import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
 import type { FileMetadata } from '~/lib/DataManagement/indexeddb.service';
@@ -108,13 +109,19 @@ export function ChatbotPanel({ files, onSearch, currentEmbeddingModel }: Chatbot
   // Check if files were processed (show warning if no embeddings)
   useEffect(() => {
     const filesWithEmbeddings = files.filter((f) => f.hasEmbeddings);
-    if (files.length > 0 && filesWithEmbeddings.length === 0) {
+    const unprocessedFiles = files.filter((f) => !f.hasEmbeddings);
+    
+    if (files.length === 0) {
       setEmbeddingModelWarning(
-        `⚠️ No processed files found. Please go to Data Management and process your files with the ${currentEmbeddingModel.type.toUpperCase()} model first.`
+        '⚠️ No files uploaded. Please upload files in the Data Management section first.'
       );
-    } else if (files.length === 0) {
+    } else if (filesWithEmbeddings.length === 0) {
       setEmbeddingModelWarning(
-        '⚠️ No files uploaded. Please upload and process files in Data Management section.'
+        `⚠️ No processed files found. You have ${unprocessedFiles.length} uploaded file(s) that need to be processed. Please go to Data Management and click "Process" on each file to generate embeddings.`
+      );
+    } else if (unprocessedFiles.length > 0) {
+      setEmbeddingModelWarning(
+        `✓ ${filesWithEmbeddings.length} file(s) processed and ready. You have ${unprocessedFiles.length} unprocessed file(s) - process them in Data Management to include in chatbot responses.`
       );
     } else {
       setEmbeddingModelWarning('');
@@ -203,11 +210,17 @@ export function ChatbotPanel({ files, onSearch, currentEmbeddingModel }: Chatbot
         5, // Get top 5 most relevant chunks
       );
 
+      console.log('🔍 Search results:', searchResults.length, 'chunks found');
+      if (searchResults.length > 0) {
+        console.log('Top result similarity:', searchResults[0].similarity);
+        console.log('Top result text preview:', searchResults[0].text.substring(0, 100));
+      }
+
       // Format context for LLM
       const context = searchResults
         .map((result, idx) => {
           const fileName = getFileName(result.fileId);
-          return `[Source ${idx + 1}: ${fileName} - Chunk ${result.chunkIndex}]\n${result.text}`;
+          return `[Source ${idx + 1}: ${fileName} - Chunk ${result.chunkIndex} (similarity: ${result.similarity.toFixed(2)})]\n${result.text}`;
         })
         .join('\n\n');
 
@@ -225,6 +238,19 @@ export function ChatbotPanel({ files, onSearch, currentEmbeddingModel }: Chatbot
       const sourceFileNames = Array.from(fileScores.entries())
         .sort((a, b) => b[1] - a[1])
         .map(([fileName]) => fileName);
+
+      // Check if we found any relevant context
+      if (searchResults.length === 0) {
+        const noContextMessage: Message = {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          content: `I couldn't find any relevant information in your uploaded documents to answer this question.\n\n**Tip:** Make sure your documents contain information related to "${userMessage.content}"\n\nTry:\n- Asking more specific questions\n- Using keywords that appear in your documents\n- Checking if the right files are processed`,
+          timestamp: Date.now(),
+        };
+        setMessages((prev) => [...prev, noContextMessage]);
+        setIsLoading(false);
+        return;
+      }
 
       // Step 2: Call LLM with context
       const llmResponse = await callLLM(
@@ -297,13 +323,35 @@ export function ChatbotPanel({ files, onSearch, currentEmbeddingModel }: Chatbot
         </Button>
       </div>
 
+      {/* Persistent Warning Banner (shown only when NO files are processed) */}
+      {files.filter(f => f.hasEmbeddings).length === 0 && files.length > 0 && !showSettings && (
+        <div className="rounded-lg border border-orange-300 bg-orange-50 p-3 text-xs text-orange-800">
+          <p className="font-semibold">⚠️ Documents need processing</p>
+          <p className="mt-1">Upload files and click "Process" in Data Management to enable chatbot responses.</p>
+          <Link 
+            href="/home/DataManagement" 
+            className="mt-2 inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 font-medium underline"
+          >
+            Go to Data Management <ExternalLink className="h-3 w-3" />
+          </Link>
+        </div>
+      )}
+
       {/* Settings Panel (Collapsible) */}
       {showSettings && (
         <div className="space-y-3 rounded-lg border bg-gray-50 border border-gray-300 p-4">
           {/* Warning Banner */}
           {embeddingModelWarning && (
             <div className="rounded-lg border border-orange-300 bg-orange-50 p-3 text-xs text-orange-800">
-              {embeddingModelWarning}
+              <p>{embeddingModelWarning}</p>
+              {files.filter(f => !f.hasEmbeddings).length > 0 && (
+                <Link 
+                  href="/home/DataManagement" 
+                  className="mt-2 inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 font-medium underline"
+                >
+                  Go to Data Management <ExternalLink className="h-3 w-3" />
+                </Link>
+              )}
             </div>
           )}
 

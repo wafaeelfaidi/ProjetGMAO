@@ -32,6 +32,15 @@ export default function DataSectionPage() {
     
     // Set Supabase as the storage backend for embedding service
     embeddingService.setStorage(fileService);
+    
+    // Set Cohere as default model with saved API key
+    const savedCohereKey = localStorage.getItem('embedding_api_key_cohere');
+    if (savedCohereKey) {
+      embeddingService.setModel('cohere', savedCohereKey);
+      console.log('✅ Using Cohere embedding model for processing');
+    } else {
+      console.warn('⚠️ No Cohere API key found. Using simple model. Configure Cohere for better results.');
+    }
   }, []);
 
   const initializeDB = async () => {

@@ -10,6 +10,7 @@ import {
   AlertCircle,
   Wrench,
   Loader2,
+  ClipboardList,
 } from 'lucide-react';
 import { 
   useMaintenanceForecast, 
@@ -19,6 +20,8 @@ import {
 import { MaintenanceCalendar } from '~/components/maintenance/MaintenanceCalendar';
 import { ProbabilityBreakdown } from '~/components/maintenance/ProbabilityBreakdown';
 import { UpcomingList } from '~/components/maintenance/UpcomingList';
+import { OperatorTaskList } from '~/components/maintenance/OperatorTaskList';
+import { useUserRole } from '~/lib/roles/use-user-role';
 import {
   Card,
   CardContent,
@@ -39,6 +42,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@kit/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@kit/ui/alert';
 
 export default function MaintenancePlanPage() {
+  const { role, isLoading: roleLoading } = useUserRole();
+  const isAdmin = role === 'admin';
+  const isOperator = role === 'operator';
+
   const [selectedMachine, setSelectedMachine] = useState<string | undefined>();
   const [horizonDays, setHorizonDays] = useState(60);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
@@ -113,7 +120,7 @@ export default function MaintenancePlanPage() {
     return combined;
   }, [forecasts]);
 
-  const isLoading = machinesLoading || forecastsLoading || calendarLoading;
+  const isLoading = machinesLoading || forecastsLoading || calendarLoading || roleLoading;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-white p-6">
@@ -232,7 +239,32 @@ export default function MaintenancePlanPage() {
         {/* Main Content */}
         {!isLoading && (
           <>
-            {/* Metrics Cards */}
+            {/* Operator View - Show only their tasks */}
+            {isOperator ? (
+              <div className="space-y-6">
+                <Card className="bg-white border-gray-300">
+                  <CardHeader>
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-blue-100 rounded-lg">
+                        <ClipboardList className="w-5 h-5 text-blue-600" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-xl text-gray-700">Mes Tâches de Maintenance</CardTitle>
+                        <CardDescription>
+                          Gérez vos tâches assignées et suivez votre progression
+                        </CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <OperatorTaskList />
+                  </CardContent>
+                </Card>
+              </div>
+            ) : (
+              <>
+                {/* Admin View - Full calendar and metrics */}
+                {/* Metrics Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
               <Card className="bg-white border-gray-300">
                 <CardHeader className="pb-2">
@@ -319,6 +351,7 @@ export default function MaintenancePlanPage() {
                       <MaintenanceCalendar 
                         events={filteredCalendarEvents}
                         onSelectEvent={setSelectedEvent}
+                        isAdmin={isAdmin}
                       />
                     ) : (
                       <Card className="bg-white border-gray-300">
@@ -457,6 +490,8 @@ export default function MaintenancePlanPage() {
                 </div>
               </TabsContent>
             </Tabs>
+              </>
+            )}
           </>
         )}
       </div>

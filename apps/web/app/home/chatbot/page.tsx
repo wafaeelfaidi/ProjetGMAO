@@ -30,14 +30,15 @@ export default function ChatbotPage() {
       // Update embedding service to use Supabase
       embeddingService.setStorage(fileService);
       
-      // Restore the embedding model that was used to process files
-      const currentModelType = embeddingService.getModelInfo().type;
-      const savedApiKey = localStorage.getItem(`embedding_api_key_${currentModelType}`);
-      if (savedApiKey && currentModelType !== 'simple') {
-        embeddingService.setModel(
-          currentModelType as 'simple' | 'openai' | 'cohere' | 'mistral' | 'gemini',
-          savedApiKey
-        );
+      // Set Cohere as default with saved API key
+      const savedCohereKey = localStorage.getItem('embedding_api_key_cohere');
+      if (savedCohereKey) {
+        embeddingService.setModel('cohere', savedCohereKey);
+        console.log('✅ Using Cohere embedding model for search');
+      } else {
+        console.warn('⚠️ No Cohere API key found. Please configure in Data Management.');
+        // Fallback to simple model if no API key
+        embeddingService.setModel('simple', '');
       }
       
       // Update model info for display
