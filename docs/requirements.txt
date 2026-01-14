@@ -1,0 +1,7 @@
+# Documentation build requirements for Read the Docs
+
+mkdocs>=1.5.3
+mkdocs-material>=9.5.3
+pymdown-extensions>=10.7
+mkdocstrings[python]>=0.24.0
+mkdocs-mermaid2-plugin>=1.1.1
